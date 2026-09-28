@@ -1,0 +1,49 @@
+# problem-tree cockpit configuration (serve.py). Copy to config.yaml and edit. Paths may use ~.
+vault: ~/brain
+# Folders searched for problem trees: any *.md with `parent: null` under a problems/ dir.
+tree_globs:
+  - 02-Projects/*/problems
+  - 02-Projects/*/*/problems
+# Agent session logs, grepped for node ids and aliases. Point these at whatever coding-agent
+# harnesses you use (pi, Claude Code, ...); leave the list empty if you don't want session linking.
+session_roots:
+  - ~/.pi/agent/sessions
+  - ~/.claude/projects
+session_cache: ~/.cache/problem-tree/sessions.json
+# Repo names used in fix:/before:/after: entries -> web URL, for lazy links.
+repos:
+  your-repo: https://github.com/you/your-repo
+default_repo: your-repo
+# Where the cockpit's one write goes: new.py next to this file.
+# Applied to copyable paths/commands (pi --session, node paths) when the vault is read
+# through a mount, e.g. on a Mac:  "/Volumes/your-share$/you": /home/you
+path_map: {}
+tree_ttl: 2            # s; re-read notes after this
+note_index_ttl: 30     # s; rebuild the stem -> path index after this
+note_index_skip: [media]
+# Experiment notes (SPEC.md §14): folders holding type: experiment notes; figures per arm at run_media.
+experiment_globs: ["02-Projects/*/*/experiments"]
+run_media: "../media/single/{run_id}"
+# Figure organisation for run galleries. Tiers are displayed in this order; within a tier the
+# order of `match` patterns is the display order; within a pattern, stages follow `stage_order`,
+# then card name. Patterns are fnmatch on the card stem (e.g. "training.*") or, when they contain
+# "/", on the stage-stripped path (e.g. "training/*"). A figure no pattern claims is shown under
+# "unassigned" — add a pattern here rather than let the server guess. This whole section is
+# optional; drop it if you don't have a validation-card pipeline to organize.
+figure_tiers:
+  - name: training
+    question: Did the run learn?
+    match: ["training.*", "training/*", "training_curves*"]
+  - name: meta
+    question: Did every check group run?
+    match: ["meta.*"]
+stage_order: [init, checkpoint, final]
+# Services the cockpit can launch for an experiment (run page), e.g. TensorBoard. Optional —
+# drop this whole section if you don't need it. They run where the cluster is: locally when the
+# cockpit runs there, over `ssh <ssh_host>` with an automatic port forward when it runs on a Mac
+# (mac/install.sh fills ssh_host from SSH_HOST).
+services:
+  ssh_host: null
+  port_pool: [8892, 8899]
+  repo_roots: {}                    # your-repo: /path/on/the/cluster/to/your-repo
+  tensorboard: null                 # /path/to/tensorboard binary, or null to disable

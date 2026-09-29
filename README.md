@@ -84,8 +84,9 @@ via **rescan**.
 - **Node**: breadcrumb, pills, before/after evidence side by side (images zoom on click; JSON/CSV
   tabulate; repo paths and commits link to GitHub per `config.yaml › repos`), fix links, rendered
   body (wikilinks resolve to notes or nodes; legacy aliases resolve too), children, and
-  **sessions**: every agent transcript that mentions the id or an alias, with copy
-  resume/fork commands and a read-only transcript view.
+  **sessions**: one row per agent chat the user started on this node (the first node id the user
+  typed, directly or in a pasted brief path; *all mentions* widens it to every chat where the user
+  typed the id), with copy resume/fork commands and a read-only transcript view.
 - **Copy buttons**: image to clipboard, relative embed for notes in `problems/`, wiki-style embed
   for any other note, id, link, file path. Clipboard needs a localhost or https origin — hence
   the ssh tunnel; otherwise the button opens the file instead.
@@ -105,6 +106,11 @@ via **rescan**.
   run, and a figure gallery organized by `config.yaml › figure_tiers` — built for a validation-card
   pipeline that tags each figure by tier/stage/card, but the whole `experiments`/`figure_tiers`
   section is optional if you don't have one.
+- **storyline**: the project's milestones for people — a calendar timeline (drag/wheel pans,
+  ctrl/pinch zooms, ←/→ steps) or a date-ordered list of *story points*, each with a plain-language
+  summary and one or two presentation-ready figures (problem → solution), zoomable and copyable at
+  full resolution. Story points are `type: story` notes in `storyline/` beside `problems/`
+  (SPEC §18), written by the `storyline` skill.
 - `#/note/<name or path>` renders any vault note read-only (a Markdown reader with wikilink
   support, no Obsidian required).
 

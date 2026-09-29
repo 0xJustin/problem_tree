@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>problem tree</title>
+<title>task tree</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Ccircle cx='3' cy='7.5' r='2' fill='%230d7a72'/%3E%3Ccircle cx='12' cy='3' r='2' fill='%230d7a72'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%230d7a72'/%3E%3Cpath d='M5 7.5H8M8 7.5L10.5 4M8 7.5L10.5 11' stroke='%230d7a72' stroke-width='1.3'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,6 +88,30 @@ table.g th{cursor:pointer;color:var(--mute);font-weight:600;font-size:10.5px;tex
 .pal-row.sel{background:var(--acc-bg)}
 .pal-empty{padding:14px;color:var(--mute2);font-size:12px}
 body.side-hidden{grid-template-columns:0 0 1fr!important}body.side-hidden #side,body.side-hidden #split{display:none}
+body.story-mode{grid-template-columns:0 0 1fr!important}body.story-mode #side,body.story-mode #split{display:none}
+/* storyline: timeline or list on top, the picked story point below */
+.story{margin:-18px -24px 0}
+.st-head{display:flex;align-items:center;gap:14px;padding:8px 24px 0;background:var(--panel);font-size:11px;color:var(--mute)}
+.st-head .seg{display:inline-flex}.st-head .seg button{border-radius:0;padding:2px 9px;font-size:11px}.st-head .seg button:first-child{border-radius:var(--radius-sm) 0 0 var(--radius-sm)}.st-head .seg button:last-child{border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-left:-1px}.st-head .seg button.on{background:var(--acc-bg);border-color:var(--acc);color:var(--acc-ink)}
+.st-head .lg{display:flex;gap:12px;margin-left:auto}.st-head .lg span{display:flex;align-items:center;gap:5px}
+.dotk{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
+.tl{display:block;width:100%;height:176px;background:var(--panel);border-bottom:1px solid var(--line);cursor:grab;touch-action:none;user-select:none}.tl.dragging{cursor:grabbing}
+.tl-month{font-size:12px;font-weight:600;fill:var(--mute)}.tl-day{font-size:10px;fill:var(--mute2);text-anchor:middle}
+.tl-label{font-size:11.5px;fill:var(--mute);text-anchor:middle}.tl-pt{cursor:pointer}.tl-pt:hover .tl-label{fill:var(--strong)}.tl-pt.on .tl-label{fill:var(--strong);font-weight:600}
+.st-list{max-height:280px;overflow:auto;background:var(--panel);border-bottom:1px solid var(--line);padding:6px 0}
+.st-row{display:grid;grid-template-columns:96px 12px minmax(0,1fr);gap:10px;align-items:center;padding:6px 24px;cursor:pointer}.st-row:hover{background:var(--soft-bg)}.st-row.on{background:var(--acc-bg)}
+.st-row .d{font-size:11.5px;color:var(--mute)}.st-row .t{color:var(--strong);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.st-row .t .s{color:var(--mute);font-weight:400;margin-left:10px}
+.st-detail{max-width:1280px;margin:0 auto;padding:22px 28px 40px}.st-detail h1.t{font-size:20px}
+.st-sum{font-size:14px;line-height:1.65;max-width:880px;color:var(--fg)}.st-sum p{margin:0 0 8px}
+.st-link{font-size:12px;color:var(--mute);margin:-4px 0 10px}
+.st-figs{display:grid;gap:12px;align-items:center;margin-top:16px;grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}.st-figs.pair{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr)}.st-figs.one{grid-template-columns:minmax(0,960px)}
+.st-fig{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;min-width:0}
+.st-fig img{width:100%;display:block;cursor:zoom-in;background:#fff;border-radius:var(--radius-sm)}
+.st-fig .role{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute2);margin-bottom:6px}.st-fig .cap{font-size:12px;color:var(--mute);margin-top:6px}
+.st-fig .acts{position:absolute;top:7px;right:10px;opacity:0;transition:opacity .12s}.st-fig:hover .acts{opacity:1}
+.st-arrow{color:var(--mute2);font-size:20px;text-align:center}
+.st-from{margin-top:18px;font-size:12px;color:var(--mute);display:flex;gap:6px;flex-wrap:wrap;align-items:center}.st-from a{font-family:"IBM Plex Mono",monospace;font-size:11px;background:var(--soft-bg);padding:1px 6px;border-radius:3px;color:var(--fg)}
+#zoom img{transform-origin:center;will-change:transform}
 #maxToggle.on{color:var(--acc-ink);border-color:var(--acc)}
 #bar{position:fixed;top:0;left:0;height:2px;width:0;background:var(--acc);z-index:10;opacity:0;transition:opacity .15s}#bar.on{opacity:1;width:60%;animation:bar 1.2s ease-out forwards}@keyframes bar{from{width:0}to{width:85%}}
 tr.live-working{animation:pulse 2.2s ease-in-out infinite}@keyframes pulse{0%,100%{box-shadow:inset 3px 0 var(--acc)}50%{box-shadow:inset 3px 0 var(--acc),0 0 0 1px var(--acc-ring)}}
@@ -148,9 +172,9 @@ tr.live-working{animation:pulse 2.2s ease-in-out infinite}@keyframes pulse{0%,10
 </head>
 <body>
 <div id="top">
-  <span class="brand"><svg width="15" height="15" viewBox="0 0 15 15" style="color:var(--acc)"><circle cx="3" cy="7.5" r="2" fill="currentColor"/><circle cx="12" cy="3" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M5 7.5H8M8 7.5L10.5 4M8 7.5L10.5 11" stroke="currentColor" stroke-width="1.3"/></svg>problem tree</span>
+  <span class="brand"><svg width="15" height="15" viewBox="0 0 15 15" style="color:var(--acc)"><circle cx="3" cy="7.5" r="2" fill="currentColor"/><circle cx="12" cy="3" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M5 7.5H8M8 7.5L10.5 4M8 7.5L10.5 11" stroke="currentColor" stroke-width="1.3"/></svg>task tree</span>
   <select id="treeSel" title="tree"></select>
-  <nav id="nav"><a href="#/tree" data-v="node" title="tree (1)">tree</a><a href="#/todos" data-v="todos" title="todos (2)">todos</a><a href="#/runs" data-v="runs" title="runs (3)">runs</a><a href="#/ledger" data-v="ledger" title="ledger (4)">ledger</a><a href="#/inbox" data-v="inbox" title="inbox (5)">inbox</a></nav>
+  <nav id="nav"><a href="#/tree" data-v="node" title="tree (1)">tree</a><a href="#/todos" data-v="todos" title="todos (2)">todos</a><a href="#/runs" data-v="runs" title="runs (3)">runs</a><a href="#/ledger" data-v="ledger" title="ledger (4)">ledger</a><a href="#/inbox" data-v="inbox" title="inbox (5)">inbox</a><a href="#/storyline" data-v="storyline" title="storyline (6)">storyline</a></nav>
   <span class="sp"></span>
   <span class="kbd" id="palBtn" title="jump to anything">⌘K</span>
   <input type="text" id="q" placeholder="filter tree…" title="press / to focus" size="22">
@@ -173,9 +197,10 @@ tr.live-working{animation:pulse 2.2s ease-in-out infinite}@keyframes pulse{0%,10
 <div id="split"></div>
 <div id="main"></div>
 <div id="bar"></div><div id="toast"></div>
-<div id="zoom" onclick="this.style.display='none'"><img></div>
+<div id="zoom"><img></div>
 <div id="palette"><div class="pal-box"><input type="text" id="palQ" placeholder="jump to a node or tab…" autocomplete="off"><div id="palList"></div></div></div>
 <script src="/webui/graph.js"></script>
+<script src="/webui/storyline.js"></script>
 <script>
 const S = {prefix: null, tree: null, sel: null, view: localStorage.ptView || 'graph', categories: []};
 const $ = s => document.querySelector(s);
@@ -195,8 +220,21 @@ async function copyImage(url) {
   try { const b = await (await fetch(url)).blob(); await navigator.clipboard.write([new ClipboardItem({[b.type]: b})]); toast('image copied'); }
   catch (e) { window.open(url, '_blank'); toast('clipboard blocked here (needs https/localhost) — opened instead'); }
 }
-function zoom(src) { $('#zoom img').src = src; $('#zoom').style.display = 'flex'; }
-document.addEventListener('click', e => { if (e.target.matches('img.embed, .card img')) zoom(e.target.src); });
+const Z = {s: 1, x: 0, y: 0, drag: null};
+const zset = () => { $('#zoom img').style.transform = `translate(${Z.x}px,${Z.y}px) scale(${Z.s})`; $('#zoom').style.cursor = Z.s > 1 ? 'grab' : 'zoom-out'; };
+function zoom(src) { Object.assign(Z, {s: 1, x: 0, y: 0}); zset(); $('#zoom img').src = src; $('#zoom').style.display = 'flex'; }
+$('#zoom').addEventListener('wheel', e => {
+  e.preventDefault();
+  const s = Math.min(Math.max(Z.s * Math.exp(-e.deltaY * 0.0022), 1), 12), mx = e.clientX - innerWidth / 2, my = e.clientY - innerHeight / 2;
+  Z.x = mx - (s / Z.s) * (mx - Z.x); Z.y = my - (s / Z.s) * (my - Z.y); Z.s = s;
+  if (s === 1) Z.x = Z.y = 0;
+  zset();
+}, {passive: false});
+$('#zoom').addEventListener('pointerdown', e => { e.preventDefault(); Z.drag = {cx: e.clientX, cy: e.clientY, x: Z.x, y: Z.y, moved: false}; });
+window.addEventListener('pointermove', e => { const d = Z.drag; if (!d) return; const dx = e.clientX - d.cx, dy = e.clientY - d.cy; if (Math.hypot(dx, dy) > 3) d.moved = true; if (d.moved && Z.s > 1) { Z.x = d.x + dx; Z.y = d.y + dy; zset(); } });
+window.addEventListener('pointerup', () => { const d = Z.drag; Z.drag = null; if (d && !d.moved && $('#zoom').style.display === 'flex') $('#zoom').style.display = 'none'; });
+$('#zoom').addEventListener('dblclick', () => { Object.assign(Z, {s: 1, x: 0, y: 0}); zset(); });
+document.addEventListener('click', e => { if (e.target.matches('img.embed, .card img, .st-fig img')) zoom(e.target.src); });
 
 // ------------------------------------------------------------------ tree
 async function loadTrees() {
@@ -302,6 +340,11 @@ function fixItem(f) {
   const [k, v] = kv; const val = f.url ? `<a href="${f.url}" target="_blank"><code>${esc(v)}</code></a>` : (k === 'note' ? esc(v) : `<code>${esc(v)}</code>`);
   return `<li><span class="mute small">${k}</span> ${val}</li>`;
 }
+function sessBox(list, nodeId) {  // node pages: one row per chat, filed under the first node id the user typed
+  S.sess = list;
+  const all = localStorage.ptSessAll === '1', shown = all ? list : list.filter(s => s.first), more = list.length - list.filter(s => s.first).length;
+  $('#sessbox').innerHTML = `<h3>sessions <span class="n">${shown.length}</span>${more || all ? ` <label class="mute small" style="float:right;font-weight:normal;text-transform:none;letter-spacing:0" title="also chats where ${nodeId} was typed after another node id (${more})"><input type="checkbox" ${all ? 'checked' : ''} onchange="localStorage.ptSessAll = this.checked ? '1' : '0'; sessBox(S.sess, '${nodeId}')" style="margin:0 3px 0 0;vertical-align:-1px;accent-color:var(--acc)">all mentions</label>` : ''}</h3>${sessRows(shown, nodeId)}`;
+}
 function sessRows(list, nodeId) {
   if (!list.length) return empty(`no transcript mentions ${nodeId} yet`);
   const LIVE = {working: 'var(--acc)', blocked: 'var(--open)', done: 'var(--ver)', idle: 'var(--closed)'};
@@ -362,6 +405,7 @@ async function viewNode(id, nav) {
   if (!local) { const first = S.sel === null; S.sel = n.id; Graph.expandTo(n.id); renderTree(first); }
   const isP = n.type === 'problem';
   let h = nodeHeader(n, d.parents, `${d.discovered_from ? `<span class="pill">discovered from <a href="#/node/${d.discovered_from.id}">${esc(d.discovered_from.id)}</a></span>` : ''}
+    ${(d.stories || []).map(s => `<a class="pill" href="#/story/${encodeURIComponent(s.slug)}" title="${esc(s.title)}" style="border-color:${Timeline.color(s.kind)};color:${Timeline.color(s.kind)}">◆ story</a>`).join('')}
     <span class="sp"></span><span class="acts">${d.brief ? `<button onclick="location.hash='#/note/${encodeURIComponent(d.brief)}'" title="${esc(d.brief)}">brief</button>` : ''}<button onclick="copyText('${n.id}')" title="copy id">id</button><button onclick="copyText('[[${n.id}]]')" title="copy wikilink">[[…]]</button><button onclick='copyText(${JSON.stringify(d.path_remote || n.path)})' title="copy path ${esc(d.path_remote || n.path)}">path</button></span>`);
   if (isP) h += `<div class="box"><h3>instrument</h3>${n.instrument ? esc(n.instrument) : '<span class="missing">not set</span>'}</div>`;
   if (isP) h += `<div class="ev"><div><h3 class="mute small" style="text-transform:uppercase;letter-spacing:.6px">before · ${d.before.length}</h3>${d.before.map(e => evCard(e, n.id)).join('') || empty('no before-evidence')}</div>
@@ -372,9 +416,56 @@ async function viewNode(id, nav) {
   if (d.children.length || d.discovered.length) h += `<div class="box kids"><h3>children <span class="n">${d.children.length}</span></h3>${d.children.map(c => `<div class="row">${dot(c)}<a href="#/node/${c.id}" class="mono small">${c.id}</a><span>${esc(c.title)}</span>${badge(c)}</div>`).join('')}
     ${d.discovered.length ? `<h3 style="margin-top:8px">discovered here</h3>${d.discovered.map(c => `<div class="row"><a href="#/node/${c.id}" class="mono small">${c.id}</a><span>${esc(c.title)}</span></div>`).join('')}` : ''}</div>`;
   if (d.experiments && d.experiments.length) h += `<div class="box"><h3>runs <span class="n">${d.experiments.length}</span></h3>${d.experiments.map(e => `<div class="kids"><div class="row"><span class="pill st ${e.status}" style="font-size:11px">${e.status}</span><a href="#/run/${e.id}" class="mono small">${e.id}</a><span class="mute small">${e.kind || ''} · ${day(e.launched)}</span><span class="small">${e.roles.map(r => `<span class="pill" style="font-size:11px">${r}</span>`).join(' ')}</span><span class="small mute">${esc(e.title || '').slice(0, 90)}</span></div></div>`).join('')}</div>`;
-  h += `<div class="box"><h3>sessions <span class="n">${d.sessions.length}</span></h3>${sessRows(d.sessions, n.id)}</div>`;
+  h += `<div class="box" id="sessbox"></div>`;
   $('#main').innerHTML = h;
+  sessBox(d.sessions, n.id);
   setupSticky();
+}
+
+// ------------------------------------------------------------------ storyline
+async function viewStory(slug, nav) {
+  const fresh = S.story && S.story.prefix === S.prefix && Date.now() - S.story.at < 5000;
+  const d = fresh ? S.story : {...await api('/api/storyline/' + S.prefix), prefix: S.prefix, at: Date.now()};
+  if (!current(nav)) return;
+  S.story = d;
+  const P = d.points, sel = P.find(p => p.slug === slug) || P[P.length - 1] || null, mode = localStorage.ptStoryView || 'timeline';
+  S.storySel = sel && sel.slug;
+  if (!$('#storyShell')) {  // built once per visit, so the timeline keeps its pan/zoom while points change
+    $('#main').innerHTML = `<div class="story" id="storyShell"><div class="st-head"><span class="seg"><button data-sv="timeline">timeline</button><button data-sv="list">list</button></span>
+      <span class="lg">${Object.entries(Timeline.KIND).map(([k, [c, l]]) => `<span><span class="dotk" style="background:${c}"></span>${l}</span>`).join('')}</span></div>
+      <svg class="tl" id="tl"></svg><div class="st-list" id="stList"></div><div class="st-detail" id="stDetail"></div></div>`;
+    $('#storyShell').querySelectorAll('[data-sv]').forEach(b => b.onclick = () => { localStorage.ptStoryView = b.dataset.sv; viewStory(S.storySel, S.nav); });
+  }
+  const pick = s => { location.hash = '#/story/' + encodeURIComponent(s); };
+  $('#storyShell').querySelectorAll('[data-sv]').forEach(b => b.classList.toggle('on', b.dataset.sv === mode));
+  $('#tl').style.display = mode === 'timeline' ? '' : 'none';
+  $('#stList').style.display = mode === 'list' ? '' : 'none';
+  if (mode === 'timeline') Timeline.mount($('#tl'), d, S.storySel, pick);
+  else {
+    const plain = h => { const t = document.createElement('div'); t.innerHTML = h; return t.textContent.trim().split(/(?<=\.)\s/)[0]; };
+    $('#stList').innerHTML = P.length ? P.map(p => `<div class="st-row${p.slug === S.storySel ? ' on' : ''}" data-slug="${esc(p.slug)}"><span class="d mono">${esc(p.date)}</span>
+      <span class="dotk" style="background:${Timeline.color(p.kind)}" title="${esc(p.kind || '')}"></span><span class="t">${esc(p.title)}<span class="s">${esc(plain(p.summary_html))}</span></span></div>`).join('') : '';
+    $('#stList').querySelectorAll('.st-row').forEach(r => r.onclick = () => pick(r.dataset.slug));
+    $('#stList .st-row.on')?.scrollIntoView({block: 'nearest'});
+  }
+  $('#stDetail').innerHTML = sel ? storyDetail(sel, P) : empty('no story points yet');
+}
+function storyDetail(p, P) {
+  const title = s => (P.find(q => q.slug === s) || {}).title || s;
+  const by = P.filter(q => q.answers === p.slug), c = Timeline.color(p.kind);
+  const date = new Date(p.date + 'T00:00:00Z').toLocaleDateString('en', {month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC'});
+  const fig = f => f.exists ? `<div class="st-fig">${f.role ? `<div class="role">${esc(f.role)}</div>` : ''}<img src="${f.url}" alt="${esc(f.caption || '')}">
+      <div class="cap">${esc(f.caption || '')}</div><span class="acts"><button onclick="copyImage('${f.url}')" title="copy full-resolution image">image</button> <button onclick='copyText(${JSON.stringify(f.path_remote)})' title="${esc(f.path_remote)}">path</button></span></div>`
+    : `<div class="st-fig"><p class="missing">missing ${esc(f.path_remote)}</p></div>`;
+  const F = p.figures, pair = F.length === 2 && F[0].role === 'problem' && F[1].role === 'solution';
+  return `<h1 class="t">${esc(p.title)}</h1>
+    <div class="pills"><span class="mute small">${date}</span><span class="pill st" style="background:${c}">${esc((Timeline.KIND[p.kind] || [, p.kind || 'story'])[1])}</span>
+      <span class="sp" style="flex:1"></span><span class="acts"><button onclick="location.hash='#/note/${encodeURIComponent(p.path)}'" title="${esc(p.path)}">note</button></span></div>
+    ${p.answers ? `<div class="st-link">answers <a href="#/story/${encodeURIComponent(p.answers)}">${esc(title(p.answers))}</a></div>` : ''}
+    ${by.map(q => `<div class="st-link">answered by <a href="#/story/${encodeURIComponent(q.slug)}">${esc(q.title)}</a></div>`).join('')}
+    <div class="st-sum">${p.summary_html}</div>
+    <div class="st-figs ${pair ? 'pair' : F.length === 1 ? 'one' : ''}">${pair ? fig(F[0]) + '<div class="st-arrow">→</div>' + fig(F[1]) : F.map(fig).join('')}</div>
+    <div class="st-from">${p.nodes.map(n => `<a href="#/node/${n.id}" title="${esc(n.title || 'not in the tree')}">${esc(n.id)}</a>`).join('')}${p.experiments.map(e => `<a href="#/run/${encodeURIComponent(e)}">${esc(e)}</a>`).join('')}</div>`;
 }
 
 // ------------------------------------------------------------------ runs (experiments)
@@ -667,7 +758,9 @@ S.nav = 0;
 const current = nav => nav === S.nav;   // views check this after every await before touching the page
 async function route() {
   const [, view, ...rest] = location.hash.split('/'); const arg = decodeURIComponent(rest.join('/')); const nav = ++S.nav;
-  const tab = {node: 'node', note: 'node', session: 'node', run: 'runs', runs: 'runs', todos: 'todos', ledger: 'ledger', inbox: 'inbox', tree: 'node'}[view] || 'node';
+  const tab = {node: 'node', note: 'node', session: 'node', run: 'runs', runs: 'runs', todos: 'todos', ledger: 'ledger', inbox: 'inbox', tree: 'node', storyline: 'storyline', story: 'storyline'}[view] || 'node';
+  document.body.classList.toggle('story-mode', tab === 'storyline');
+  $('#zoom').style.display = 'none';
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.v === tab));
   try {
     if (view === 'tree') { if (S.tree?.root) location.hash = '#/node/' + S.tree.root; return; }
@@ -679,6 +772,7 @@ async function route() {
     else if (view === 'inbox') await viewInbox();
     else if (view === 'runs') await viewRuns(nav);
     else if (view === 'run' && arg) await viewRun(arg, nav);
+    else if (view === 'storyline' || view === 'story') await viewStory(arg, nav);
     else if (S.tree?.root) location.hash = '#/node/' + S.tree.root;
   } catch (e) { if (current(nav)) $('#main').innerHTML = `<p class="missing">${esc(e.message)}</p>`; }
 }
@@ -703,7 +797,7 @@ new MutationObserver(muts => { for (const m of muts) for (const n of m.addedNode
 // ------------------------------------------------------------------ command palette (⌘K)
 const PAL = {items: [], idx: 0};
 function paletteItems(q) {
-  const out = [], tabs = [['tree', '#/tree'], ['todos', '#/todos'], ['runs', '#/runs'], ['ledger', '#/ledger'], ['inbox', '#/inbox']];
+  const out = [], tabs = [['tree', '#/tree'], ['todos', '#/todos'], ['runs', '#/runs'], ['ledger', '#/ledger'], ['inbox', '#/inbox'], ['storyline', '#/storyline']];
   for (const [label, hash] of tabs) if (!q || label.includes(q)) out.push({kind: 'tab', label, hash});
   const N = S.tree?.nodes || {};
   for (const id in N) {
@@ -734,7 +828,7 @@ $('#palQ').addEventListener('keydown', e => {
 $('#palette').addEventListener('click', e => { if (e.target.id === 'palette') paletteClose(); });
 
 // keyboard: ⌘K/Ctrl+K opens the palette, / focuses the filter, 1-5 switch tabs, m toggles maximize, Esc closes overlays
-const TABS = {1: '#/tree', 2: '#/todos', 3: '#/runs', 4: '#/ledger', 5: '#/inbox'};
+const TABS = {1: '#/tree', 2: '#/todos', 3: '#/runs', 4: '#/ledger', 5: '#/inbox', 6: '#/storyline'};
 document.addEventListener('keydown', e => {
   const typing = /^(input|textarea|select)$/i.test(e.target.tagName) || e.target.isContentEditable;
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); paletteOpen(); return; }
@@ -747,7 +841,11 @@ document.addEventListener('keydown', e => {
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === '/') { e.preventDefault(); $('#q').focus(); return; }
   if (e.key === 'm') { e.preventDefault(); toggleMax(); return; }
-  if (TABS[e.key]) { e.preventDefault(); location.hash = TABS[e.key]; }
+  if (TABS[e.key]) { e.preventDefault(); location.hash = TABS[e.key]; return; }
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && document.body.classList.contains('story-mode') && S.story) {
+    const P = S.story.points, i = P.findIndex(p => p.slug === S.storySel), j = i + (e.key === 'ArrowLeft' ? -1 : 1);
+    if (P[j]) { e.preventDefault(); location.hash = '#/story/' + encodeURIComponent(P[j].slug); }
+  }
 });
 </script>
 </body>

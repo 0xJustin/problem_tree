@@ -40,7 +40,7 @@ VIDEO_EXT = {".mp4", ".webm", ".mov"}  # rollout videos under media/single/<run_
 SKIP_DIRS = {".obsidian", ".git", ".venv", "node_modules", ".smart-env", ".trash", "__pycache__"}
 # node ids, legacy P-nn aliases, run ids (dd-mm-yyyy_hh-mm_xxxxxxxx) and experiment folders (yyyy-mm-dd_name)
 ID_TOKEN = re.compile(r"\b[a-z]{2,8}-[0-9a-z]{4}\b|\bP-\d{2}\b|\b\d\d-\d\d-\d{4}_\d\d-\d\d_[a-z0-9]{8}\b|\b\d{4}-\d\d-\d\d_[A-Za-z][\w.-]*\b")
-CACHE_VERSION = 3
+CACHE_VERSION = 4
 RUN_ID = re.compile(r"\b\d\d-\d\d-\d{4}_\d\d-\d\d_[a-z0-9]{8}\b")
 WIKI_EMBED = re.compile(r"!\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
 WIKI_LINK = re.compile(r"(?<!!)\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
@@ -691,6 +691,49 @@ class Renderer:
         return markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists", "nl2br"])
 
 
+# --------------------------------------------------------------------------- storyline
+class Storyline:
+    """Story points: `type: story` notes in the storyline/ folder beside a tree's problems/ folder,
+    one per milestone, named by file stem (the storyline skill writes them)."""
+
+    def __init__(self, cfg, trees):
+        self.cfg, self.trees, self._by = cfg, trees, {}
+
+    def points(self, prefix):
+        d = self.trees.dirs().get(prefix)
+        if d is None:
+            raise HTTPException(404, f"no tree with prefix {prefix}")
+        if prefix not in self._by:
+            self._by[prefix] = Stale(lambda: self._scan(d.parent / "storyline"), self.cfg.tree_ttl)
+        return self._by[prefix].get()
+
+    def _scan(self, d):
+        out = []
+        for path in sorted(d.glob("*.md")) if d.is_dir() else []:
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if not text.startswith("---\n"):
+                continue
+            end = text.find("\n---", 4)
+            try:
+                fm = yaml.safe_load(text[4:end]) or {}
+            except yaml.YAMLError:
+                continue
+            if isinstance(fm, dict) and fm.get("type") == "story":
+                out.append(fm | {"slug": path.stem, "_path": path, "_body": text[end + 4:]})
+        return sorted(out, key=lambda p: str(p.get("date") or ""))
+
+    def for_node(self, prefix, node_id):
+        return [{"slug": p["slug"], "title": p.get("title"), "kind": p.get("kind")}
+                for p in self.points(prefix) if node_id in (p.get("nodes") or [])]
+
+
+def story_summary(body):
+    """The summary is the prose between the H1 and the first figure or `##` heading."""
+    body = re.sub(r"^\s*# .*\n", "", body, count=1)
+    m = re.search(r"^\s*(!\[|## )", body, flags=re.M)
+    return (body[:m.start()] if m else body).strip()
+
+
 # --------------------------------------------------------------------------- sessions
 class SessionIndex:
     """Which agent sessions mention which node ids. Scans pi + Claude JSONL logs in the
@@ -723,6 +766,8 @@ class SessionIndex:
                 if not root.is_dir():
                     continue
                 for p in root.rglob("*.jsonl"):
+                    if "subagents" in p.parts:  # a subagent belongs to the chat that spawned it
+                        continue
                     key = str(p)
                     seen.add(key)
                     st = p.stat()
@@ -745,11 +790,30 @@ class SessionIndex:
             self.scanning = False
 
     def query(self, ids):
+        """Sessions whose transcript mentions any of `ids` anywhere (runs, experiments)."""
         ids = set(ids)
         with self.lock:
-            hits = [r | {"hits": sorted(ids & set(r["ids"]))} for r in self.files.values() if ids & set(r["ids"])]
+            hits = [r | {"hits": sorted(ids & set(r["ids"]))} for r in self.chats() if ids & set(r["ids"])]
+        return self._finish(hits)
+
+    def query_user(self, ids, known):
+        """Sessions where the user typed one of `ids` (a node id or alias, or a brief path carrying it).
+        `first` marks those whose first typed node id is this node; `known` maps ids and aliases to
+        canonical node ids, so tokens that only look like ids (read-only) are skipped."""
+        ids, canon = set(ids), {known.get(i) for i in ids} - {None}
+        with self.lock:
+            hits = [r | {"hits": sorted(ids & set(r["user_ids"]))} for r in self.chats() if ids & set(r["user_ids"])]
         for r in hits:
-            r.pop("ids", None)
+            r["first"] = next((known[i] for i in r["user_ids"] if i in known), None) in canon
+        return self._finish(hits)
+
+    def chats(self):
+        """Indexed transcripts minus `claude -p` one-shots (the categorizer), which are not chats."""
+        return [r for r in self.files.values() if not r["headless"]]
+
+    def _finish(self, hits):
+        for r in hits:
+            r.pop("ids", None), r.pop("user_ids", None), r.pop("headless", None)
             r.update(commands(self.cfg, r))
         return sorted(hits, key=lambda r: r.get("started") or "", reverse=True)
 
@@ -774,14 +838,16 @@ def herdr_live(ttl=5):
     return _LIVE["v"]
 
 
-def node_sessions(cfg, sessions, n):
-    """Grep hits, with the node's `sessions:` refs flagged `working` (listed first, stubbed if not yet indexed)."""
+def node_sessions(cfg, sessions, n, known):
+    """Chats where the user typed the node's id, with the node's `sessions:` refs flagged `working`
+    (listed first, stubbed if not yet indexed). Refs count as `first`: they were attached on purpose."""
     refs = {str(s["ref"]): s.get("harness", "pi") for s in n.get("sessions") or [] if isinstance(s, dict) and s.get("ref")}
-    hits, live = sessions.query([n["id"], *(n.get("aliases") or [])]), herdr_live()
+    hits, live = sessions.query_user([n["id"], *(n.get("aliases") or [])], known), herdr_live()
     for r in hits:
         r["working"] = bool(refs.keys() & {r["session_id"], r["path"]})
+        r["first"] = r["first"] or r["working"]
         refs.pop(r["session_id"], None), refs.pop(r["path"], None)
-    hits += [{"harness": h, "session_id": ref, "path": ref, "working": True, "hits": [], "n_user": 0,
+    hits += [{"harness": h, "session_id": ref, "path": ref, "working": True, "first": True, "hits": [], "n_user": 0,
               "resume": f'pi --session {ref}' if h == "pi" else f"claude --resume {ref}", "fork": None}
              for ref, h in refs.items()]
     for r in hits:
@@ -817,14 +883,17 @@ def parse_session(path, roots):
     responsive while a first scan runs."""
     harness = "pi" if "/.pi/" in str(path) else "claude"
     rec = {"harness": harness, "path": str(path), "session_id": path.stem.split("_")[-1] if harness == "pi" else path.stem,
-           "cwd": None, "started": None, "ended": None, "first_user": None, "n_user": 0, "ids": []}
-    ids = set()
+           "cwd": None, "started": None, "ended": None, "first_user": None, "n_user": 0, "ids": [], "user_ids": [],
+           "headless": False}
+    ids, user_ids = set(), {}  # user_ids: dict as an ordered set, in the order the user typed them
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
             for i, line in enumerate(fh):
                 if i % 2000 == 1999:
                     time.sleep(0)
                 ids.update(ID_TOKEN.findall(line))
+                if not rec["headless"] and '"entrypoint":"sdk-cli"' in line:
+                    rec["headless"] = True
                 m = TS_RE.search(line)
                 if m:
                     rec["started"] = rec["started"] or m.group(1)
@@ -857,12 +926,14 @@ def parse_session(path, roots):
                 if msg and msg.get("role") == "user":
                     texts = [x for x in _text_blocks(msg.get("content")) if x.strip() and not x.lstrip().startswith("<")]
                     if texts:
+                        for t in texts:
+                            user_ids.update(dict.fromkeys(ID_TOKEN.findall(t)))
                         rec["n_user"] += 1
                         if rec["first_user"] is None:
                             rec["first_user"] = texts[0].strip()[:240]
     except OSError:
         return None
-    rec["ids"] = sorted(ids)
+    rec["ids"], rec["user_ids"] = sorted(ids), list(user_ids)
     return rec
 
 
@@ -1000,6 +1071,7 @@ def build_app(cfg):
     render = Renderer(cfg, notes, trees, experiments)
     sessions = SessionIndex(cfg)
     services = Services(cfg)
+    stories = Storyline(cfg, trees)
 
     def exp_paths(e):
         """Cluster-side paths for an experiment: repo root, experiment dir, runs dir, observatory bundle."""
@@ -1078,10 +1150,39 @@ def build_app(cfg):
                          if n.get("artifact") else None),
             "fix": [resolve_fix(cfg, f) for f in n.get("fix") or []],
             "experiments": experiments.for_node(n),
-            "sessions": node_sessions(cfg, sessions, n),
+            "sessions": node_sessions(cfg, sessions, n, trees.all_ids()),
+            "stories": stories.for_node(prefix, n["id"]),
             "brief": next((str(b.relative_to(cfg.vault)) for b in [path.parent.parent / "briefs" / f"{n['id']}.md"]
                            if b.is_file()), None),
         }
+
+    @app.get("/api/storyline/{prefix}")
+    def api_storyline(prefix: str):
+        """Story points oldest first, with figures as /file URLs, plus tasks closed per day (the tree's tempo)."""
+        t = trees.tree(prefix)
+        out = []
+        for p in stories.points(prefix):
+            rel = p["_path"].relative_to(cfg.vault)
+            figs = []
+            for f in p.get("figures") or []:
+                if not isinstance(f, dict) or not f.get("path"):
+                    continue
+                target = (p["_path"].parent / f["path"]).resolve()
+                ok = cfg.vault in target.parents and target.is_file()
+                figs.append({"role": f.get("role"), "caption": f.get("caption"), "exists": ok,
+                             "url": f"/file/{target.relative_to(cfg.vault)}" if ok else None,
+                             "path_remote": cfg.remote(target)})
+            out.append({"slug": p["slug"], "title": p.get("title") or p["slug"], "date": str(p.get("date") or ""),
+                        "kind": p.get("kind"), "answers": p.get("answers"), "path": str(rel), "figures": figs,
+                        "summary_html": render.html(story_summary(p["_body"]), rel),
+                        "nodes": [{"id": i, "title": t["nodes"][i]["title"] if i in t["nodes"] else None} for i in p.get("nodes") or []],
+                        "experiments": p.get("experiments") or []})
+        closed = {}
+        for n in t["nodes"].values():
+            if n.get("closed"):
+                d = str(n["closed"])[:10]
+                closed[d] = closed.get(d, 0) + 1
+        return {"points": out, "closed": closed, "today": time.strftime("%Y-%m-%d")}
 
     @app.get("/api/experiments")
     def api_experiments():

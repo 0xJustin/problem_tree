@@ -165,9 +165,14 @@ aliases. Existing `P-01…P-14` are migrated to hash ids with `aliases: [P-nn]` 
 
 ## 8. Session linkage — inferred, not recorded
 
-The cockpit lists, for each node, every agent session whose transcript mentions the node's
-id or any alias, by scanning `~/.pi/agent/sessions/**/*.jsonl` and
-`~/.claude/projects/**/*.jsonl` (both are plain JSONL keyed by cwd). No hooks, no agent
+The cockpit lists, for each node, one row per chat whose *first* node id typed by the user
+(directly or inside a pasted brief path) is the node's id or an alias, by scanning
+`~/.pi/agent/sessions/**/*.jsonl` and `~/.claude/projects/**/*.jsonl` (both are plain JSONL
+keyed by cwd). Ids that appear only in agent or tool text don't count, so parents and
+children stay off each other's lists; an *all mentions* checkbox widens the list to every chat
+where the user typed the id at any point. Subagent transcripts and headless `claude -p` runs
+(`entrypoint: sdk-cli`, e.g. the categorizer) are not chats and are skipped. Run and
+experiment pages still match run ids anywhere in a transcript. No hooks, no agent
 discipline, retroactive over existing sessions. Each hit shows harness, date, first user
 message, and copyable `pi --session <path>` / `pi --fork <path>` / `claude --resume <uuid>`
 commands, plus a read-only transcript view. The `sessions:` frontmatter list is a manual
@@ -291,3 +296,21 @@ The UI speaks through design, not annotation. Colour, shape and position carry s
 (status border, verdict dot, dashed = soft); words are for titles and content. Metadata and
 actions appear on hover, not by default; counts are quiet numbers, not labels; no
 instructional text in the interface. Prefer removing an element to explaining it.
+
+## 18. Storyline (2026-09-29)
+
+The project's milestones, for people: one `type: story` note per story point in `storyline/`
+beside the tree's `problems/` folder, figures in `media/storyline/<slug>/` (committed, LFS). The
+`storyline` skill decides what qualifies and writes them, only with the user's approval; wrap-up may
+suggest one. Frontmatter: `date` (when the result landed), `title` (the finding as a sentence),
+`kind: decision | problem-exposed | fix | overview`, `nodes: []`, `experiments: []`,
+`figures: [{path, role: problem | solution | overview, caption}]` (paths relative to the note), and
+optional `answers: <slug>` (a later point that resolves an earlier one). The body's prose between the
+H1 and the first figure or `##` heading is the summary.
+
+Cockpit tab *storyline* (key 6), full width: a calendar timeline (drag or wheel pans, ctrl/pinch
+zooms, double-click fits, ←/→ steps) with story points as dots colored by kind and tasks closed per
+day as faint bars under the axis; or a list ordered by date. The picked point shows its summary and
+figures (problem → solution side by side); figures zoom on click (wheel, drag) and copy at full
+resolution. `answers:` links show as text and a dashed ring on the linked dot, not as arcs. Node
+pages carry a ◆ marker per story point that draws on them.

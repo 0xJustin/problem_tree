@@ -55,7 +55,8 @@ in it appears in one of the figures.
 
 ## Figures — presentation-ready
 
-The user drops these into their own slides unchanged.
+The user drops these into their own slides unchanged. When the user picks existing figures, use them
+unchanged; these rules apply only to figures the agent proposes or redraws.
 
 - One message per figure; the title states the message, not the plotted variables.
 - Plain axis labels with units; no internal ids, run ids or file paths in the figure.

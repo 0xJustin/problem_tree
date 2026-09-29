@@ -312,5 +312,7 @@ Cockpit tab *storyline* (key 6), full width: a calendar timeline (drag or wheel 
 zooms, double-click fits, ←/→ steps) with story points as dots colored by kind and tasks closed per
 day as faint bars under the axis; or a list ordered by date. The picked point shows its summary and
 figures (problem → solution side by side); figures zoom on click (wheel, drag) and copy at full
-resolution. `answers:` links show as text and a dashed ring on the linked dot, not as arcs. Node
+resolution. Clicking a tasks-closed bar opens a sidebar listing the nodes closed that day (dropped
+last, dimmed; `#/storyline/closed/<from>[..<to>]`); once a day is narrower than 6 px the bars merge into
+Monday-start weeks and a click lists the week. `answers:` links show as text and a dashed ring on the linked dot, not as arcs. Node
 pages carry a ◆ marker per story point that draws on them.

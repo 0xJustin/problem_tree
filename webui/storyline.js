@@ -1,16 +1,18 @@
-// Storyline timeline: a calendar axis with story points as dots, tasks closed per day as faint
-// bars under the axis. Drag or wheel pans, ctrl/pinch-wheel zooms around the cursor.
+// Storyline timeline: a calendar axis with story points as dots, tasks closed per day (per week when
+// a day is too narrow to click) as bars under the axis. Drag or wheel pans, ctrl/pinch-wheel zooms
+// around the cursor; clicking a bar reports its date range.
 const Timeline = (() => {
-  const DAY = 864e5, H = 176, AXIS = 118, LANES = [92, 66, 40];
+  const DAY = 864e5, H = 200, AXIS = 118, LANES = [92, 66, 40];
   const KIND = {decision: ['var(--acc)', 'decision'], 'problem-exposed': ['var(--open)', 'problem exposed'],
                 fix: ['var(--task)', 'fix'], overview: ['var(--prop)', 'overview']};
-  const T = {svg: null, points: [], closed: {}, today: null, x0: 0, x1: 0, sel: null, onPick: null};
+  const T = {svg: null, points: [], closed: {}, today: null, x0: 0, x1: 0, sel: null, onPick: null, onBars: null, range: null};
+  const iso = t => new Date(t).toISOString().slice(0, 10);
   const ms = d => Date.parse(String(d).slice(0, 10) + 'T00:00:00Z');
   const color = k => (KIND[k] || ['var(--mute)'])[0];
 
-  function mount(svg, data, sel, onPick) {
+  function mount(svg, data, sel, onPick, onBars, range) {
     const keep = T.svg === svg && T.x1 > T.x0;  // same strip re-rendered: keep the user's pan/zoom
-    Object.assign(T, {svg, points: data.points, closed: data.closed, today: ms(data.today), sel, onPick});
+    Object.assign(T, {svg, points: data.points, closed: data.closed, today: ms(data.today), sel, onPick, onBars, range});
     if (!keep) fit(); else reveal(sel);
     if (!svg.dataset.wired) wire(svg);
     draw();
@@ -37,7 +39,8 @@ const Timeline = (() => {
     window.addEventListener('pointerup', () => { if (drag?.moved) svg.dataset.justDragged = 1; drag = null; svg.classList.remove('dragging'); });
     svg.addEventListener('click', e => {
       if (svg.dataset.justDragged) { delete svg.dataset.justDragged; return; }
-      const g = e.target.closest('[data-slug]'); if (g && T.onPick) T.onPick(g.dataset.slug);
+      const g = e.target.closest('[data-slug]'); if (g && T.onPick) { T.onPick(g.dataset.slug); return; }
+      const b = e.target.closest('[data-from]'); if (b && T.onBars) T.onBars(b.dataset.from, b.dataset.to);
     });
     svg.addEventListener('wheel', e => {
       e.preventDefault();
@@ -57,11 +60,14 @@ const Timeline = (() => {
   }
 
   function ticks(X, W) {
-    const span = (T.x1 - T.x0) / DAY, out = [];
+    const span = (T.x1 - T.x0) / DAY, out = [], monthPx = W / span * 30.4;
     const start = new Date(T.x0); start.setUTCHours(0, 0, 0, 0);
     for (let t = start.getTime(); t <= T.x1; t += DAY) {
       const d = new Date(t), x = X(t), first = d.getUTCDate() === 1, mon = d.getUTCDay() === 1;
-      if (first) out.push(`<line x1="${x}" x2="${x}" y1="${AXIS - 9}" y2="${AXIS + 4}" stroke="var(--mute2)"/>
+      if (first && monthPx < 70) {  // zoomed out: month ticks, a label only on each January
+        out.push(`<line x1="${x}" x2="${x}" y1="${AXIS - (d.getUTCMonth() ? 5 : 9)}" y2="${AXIS}" stroke="var(--mute2)"/>`
+          + (d.getUTCMonth() ? '' : `<text x="${x + 4}" y="${H - 10}" class="tl-month">${d.getUTCFullYear()}</text>`));
+      } else if (first) out.push(`<line x1="${x}" x2="${x}" y1="${AXIS - 9}" y2="${AXIS + 4}" stroke="var(--mute2)"/>
         <text x="${x + 4}" y="${H - 10}" class="tl-month">${d.toLocaleString('en', {month: 'long', timeZone: 'UTC'})} ${d.getUTCFullYear()}</text>`);
       else if (span <= 120 && mon) out.push(`<line x1="${x}" x2="${x}" y1="${AXIS - 4}" y2="${AXIS}" stroke="var(--line2)"/>`
         + (span <= 70 ? `<text x="${x}" y="${AXIS + 16}" class="tl-day">${d.getUTCDate()}</text>` : ''));
@@ -69,21 +75,31 @@ const Timeline = (() => {
     }
     // month label for a view that starts mid-month
     const s = new Date(T.x0);
-    if (s.getUTCDate() > 1) out.push(`<text x="8" y="${H - 10}" class="tl-month">${s.toLocaleString('en', {month: 'long', timeZone: 'UTC'})} ${s.getUTCFullYear()}</text>`);
+    if (s.getUTCDate() > 1 && monthPx >= 70) out.push(`<text x="8" y="${H - 10}" class="tl-month">${s.toLocaleString('en', {month: 'long', timeZone: 'UTC'})} ${s.getUTCFullYear()}</text>`);
     return out.join('');
   }
 
   function draw() {
     const svg = T.svg, W = svg.clientWidth || 800, X = t => (t - T.x0) / (T.x1 - T.x0) * W;
-    const barMax = Math.max(1, ...Object.values(T.closed));
-    let h = `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>`;
+    // bars: one per day, or per Monday-start week once a day is narrower than 6 px
+    const dayPx = W / ((T.x1 - T.x0) / DAY), weekly = dayPx < 6, bins = {};
     for (const [d, n] of Object.entries(T.closed)) {
-      const x = X(ms(d) + DAY / 2), bw = Math.max(2, Math.min(10, W / ((T.x1 - T.x0) / DAY) * 0.6));
-      h += `<rect x="${x - bw / 2}" y="${AXIS + 22}" width="${bw}" height="${2 + 22 * n / barMax}" rx="1" fill="var(--line)"><title>${d} · ${n} closed</title></rect>`;
+      const t = ms(d), start = weekly ? t - ((new Date(t).getUTCDay() + 6) % 7) * DAY : t;
+      bins[start] = (bins[start] || 0) + n;
+    }
+    const barMax = Math.max(1, ...Object.values(bins)), span = weekly ? 7 * DAY : DAY, bw = Math.max(3, Math.min(16, (weekly ? 7 : 1) * dayPx * 0.7));
+    let h = `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>`;
+    for (const [start, n] of Object.entries(bins)) {
+      const from = iso(+start), to = iso(+start + span - DAY), x = X(+start + span / 2), bh = 3 + 27 * n / barMax;
+      const on = T.range && T.range[0] <= to && T.range[1] >= from;
+      h += `<g class="tl-bar${on ? ' on' : ''}" data-from="${from}" data-to="${to}"><title>${weekly ? 'week of ' + from : from} · ${n} closed</title>
+        <rect x="${x - bw / 2 - 3}" y="${AXIS + 20}" width="${bw + 6}" height="44" fill="transparent"/>
+        <rect x="${x - bw / 2}" y="${AXIS + 22}" width="${bw}" height="${bh}" rx="1.5"/>`
+        + (n === barMax ? `<text x="${x}" y="${AXIS + 22 + bh + 11}" class="tl-count">${n}</text>` : '') + '</g>';
     }
     h += `<line x1="0" x2="${W}" y1="${AXIS}" y2="${AXIS}" stroke="var(--line2)" stroke-width="1.5"/>` + ticks(X, W);
     const tx = X(T.today + DAY / 2);
-    h += `<line x1="${tx}" x2="${tx}" y1="14" y2="${AXIS + 46}" stroke="var(--acc)" stroke-dasharray="3 3" opacity=".7"/>`;
+    h += `<line x1="${tx}" x2="${tx}" y1="14" y2="${AXIS + 56}" stroke="var(--acc)" stroke-dasharray="3 3" opacity=".7"/>`;
     // labels: greedy lanes, left to right; a label that fits no lane shows on hover only
     const sel = T.points.find(p => p.slug === T.sel), linked = new Set(sel ? [sel.answers, ...T.points.filter(p => p.answers === sel.slug).map(p => p.slug)] : []);
     const ends = LANES.map(() => -Infinity), placed = [];

@@ -95,9 +95,17 @@ body.story-mode{grid-template-columns:0 0 1fr!important}body.story-mode #side,bo
 .st-head .seg{display:inline-flex}.st-head .seg button{border-radius:0;padding:2px 9px;font-size:11px}.st-head .seg button:first-child{border-radius:var(--radius-sm) 0 0 var(--radius-sm)}.st-head .seg button:last-child{border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-left:-1px}.st-head .seg button.on{background:var(--acc-bg);border-color:var(--acc);color:var(--acc-ink)}
 .st-head .lg{display:flex;gap:12px;margin-left:auto}.st-head .lg span{display:flex;align-items:center;gap:5px}
 .dotk{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
-.tl{display:block;width:100%;height:176px;background:var(--panel);border-bottom:1px solid var(--line);cursor:grab;touch-action:none;user-select:none}.tl.dragging{cursor:grabbing}
+.tl{display:block;width:100%;height:200px;background:var(--panel);border-bottom:1px solid var(--line);cursor:grab;touch-action:none;user-select:none}.tl.dragging{cursor:grabbing}
 .tl-month{font-size:12px;font-weight:600;fill:var(--mute)}.tl-day{font-size:10px;fill:var(--mute2);text-anchor:middle}
-.tl-label{font-size:11.5px;fill:var(--mute);text-anchor:middle}.tl-pt{cursor:pointer}.tl-pt:hover .tl-label{fill:var(--strong)}.tl-pt.on .tl-label{fill:var(--strong);font-weight:600}
+.tl-label{font-size:11.5px;fill:var(--mute);text-anchor:middle}
+.tl-bar{cursor:pointer}.tl-bar rect+rect{fill:var(--closed);opacity:.7;transition:opacity .1s,fill .1s}.tl-bar:hover rect+rect{opacity:1;fill:var(--mute)}.tl-bar.on rect+rect{fill:var(--acc);opacity:.9}
+.tl-count{font-size:10px;fill:var(--mute);text-anchor:middle}
+.st-body{display:flex;align-items:flex-start;min-width:0}.st-body .st-detail{flex:1;min-width:0}
+.st-side{width:380px;flex:none;position:sticky;top:0;max-height:calc(100vh - 60px);overflow:auto;border-left:1px solid var(--line);background:var(--panel);padding:14px 16px 30px}
+.st-side h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;color:var(--strong)}.st-side h3 .n{color:var(--mute2);font-weight:500}.st-side h3 .x{margin-left:auto;cursor:pointer;color:var(--mute2);font-size:16px;line-height:1}.st-side h3 .x:hover{color:var(--fg)}
+.st-side .day{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute2);margin:12px 0 4px}
+.st-side .row{display:grid;grid-template-columns:12px 68px minmax(0,1fr);gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--soft-bg)}.st-side .row .t{font-size:12px;overflow-wrap:anywhere}.st-side .row .c{display:block;font-size:10.5px;color:var(--mute)}
+.st-side .row.dropped{opacity:.45}.tl-pt{cursor:pointer}.tl-pt:hover .tl-label{fill:var(--strong)}.tl-pt.on .tl-label{fill:var(--strong);font-weight:600}
 .st-list{max-height:280px;overflow:auto;background:var(--panel);border-bottom:1px solid var(--line);padding:6px 0}
 .st-row{display:grid;grid-template-columns:96px 12px minmax(0,1fr);gap:10px;align-items:center;padding:6px 24px;cursor:pointer}.st-row:hover{background:var(--soft-bg)}.st-row.on{background:var(--acc-bg)}
 .st-row .d{font-size:11.5px;color:var(--mute)}.st-row .t{color:var(--strong);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.st-row .t .s{color:var(--mute);font-weight:400;margin-left:10px}
@@ -424,6 +432,7 @@ async function viewNode(id, nav) {
 
 // ------------------------------------------------------------------ storyline
 async function viewStory(slug, nav) {
+  if (slug && slug.startsWith('closed/')) { S.storyClosed = slug.slice(7).split('..'); slug = S.storySel; }
   const fresh = S.story && S.story.prefix === S.prefix && Date.now() - S.story.at < 5000;
   const d = fresh ? S.story : {...await api('/api/storyline/' + S.prefix), prefix: S.prefix, at: Date.now()};
   if (!current(nav)) return;
@@ -433,14 +442,19 @@ async function viewStory(slug, nav) {
   if (!$('#storyShell')) {  // built once per visit, so the timeline keeps its pan/zoom while points change
     $('#main').innerHTML = `<div class="story" id="storyShell"><div class="st-head"><span class="seg"><button data-sv="timeline">timeline</button><button data-sv="list">list</button></span>
       <span class="lg">${Object.entries(Timeline.KIND).map(([k, [c, l]]) => `<span><span class="dotk" style="background:${c}"></span>${l}</span>`).join('')}</span></div>
-      <svg class="tl" id="tl"></svg><div class="st-list" id="stList"></div><div class="st-detail" id="stDetail"></div></div>`;
+      <svg class="tl" id="tl"></svg><div class="st-list" id="stList"></div><div class="st-body"><div class="st-detail" id="stDetail"></div><div class="st-side" id="stSide"></div></div></div>`;
     $('#storyShell').querySelectorAll('[data-sv]').forEach(b => b.onclick = () => { localStorage.ptStoryView = b.dataset.sv; viewStory(S.storySel, S.nav); });
   }
   const pick = s => { location.hash = '#/story/' + encodeURIComponent(s); };
   $('#storyShell').querySelectorAll('[data-sv]').forEach(b => b.classList.toggle('on', b.dataset.sv === mode));
   $('#tl').style.display = mode === 'timeline' ? '' : 'none';
   $('#stList').style.display = mode === 'list' ? '' : 'none';
-  if (mode === 'timeline') Timeline.mount($('#tl'), d, S.storySel, pick);
+  const bars = (from, to) => {
+    const same = S.storyClosed && S.storyClosed[0] === from && (S.storyClosed[1] || from) === to;
+    if (same) { S.storyClosed = null; history.replaceState(null, '', '#/story/' + encodeURIComponent(S.storySel || '')); viewStory(S.storySel, S.nav); }
+    else location.hash = '#/storyline/closed/' + from + (to !== from ? '..' + to : '');
+  };
+  if (mode === 'timeline') Timeline.mount($('#tl'), d, S.storySel, pick, bars, S.storyClosed && [S.storyClosed[0], S.storyClosed[1] || S.storyClosed[0]]);
   else {
     const plain = h => { const t = document.createElement('div'); t.innerHTML = h; return t.textContent.trim().split(/(?<=\.)\s/)[0]; };
     $('#stList').innerHTML = P.length ? P.map(p => `<div class="st-row${p.slug === S.storySel ? ' on' : ''}" data-slug="${esc(p.slug)}"><span class="d mono">${esc(p.date)}</span>
@@ -449,6 +463,20 @@ async function viewStory(slug, nav) {
     $('#stList .st-row.on')?.scrollIntoView({block: 'nearest'});
   }
   $('#stDetail').innerHTML = sel ? storyDetail(sel, P) : empty('no story points yet');
+  $('#stSide').style.display = S.storyClosed ? '' : 'none';
+  if (S.storyClosed) $('#stSide').innerHTML = closedSide(S.storyClosed[0], S.storyClosed[1] || S.storyClosed[0]);
+}
+function closedSide(from, to) {  // nodes whose closed: date falls in [from, to]; dropped last, dimmed
+  const N = Object.values(S.tree?.nodes || {}).filter(n => n.closed && String(n.closed).slice(0, 10) >= from && String(n.closed).slice(0, 10) <= to);
+  const days = [...new Set(N.map(n => String(n.closed).slice(0, 10)))].sort();
+  const row = n => { const c = catColor(n.category);
+    return `<div class="row${n.status === 'dropped' ? ' dropped' : ''}">${dot(n)}<a class="mono small" href="#/node/${n.id}">${n.id}</a>
+      <span class="t">${esc(n.title)}${n.category ? `<span class="c" style="${c ? `color:${c}` : ''}">${esc(n.category)}</span>` : ''}</span></div>`; };
+  const group = list => [...list.filter(n => n.status !== 'dropped'), ...list.filter(n => n.status === 'dropped')].map(row).join('');
+  const title = from === to ? new Date(from + 'T00:00:00Z').toLocaleDateString('en', {month: 'long', day: 'numeric', timeZone: 'UTC'})
+    : `${new Date(from + 'T00:00:00Z').toLocaleDateString('en', {month: 'short', day: 'numeric', timeZone: 'UTC'})} – ${new Date(to + 'T00:00:00Z').toLocaleDateString('en', {month: 'short', day: 'numeric', timeZone: 'UTC'})}`;
+  return `<h3>${title} <span class="n">${N.length} closed</span><span class="x" onclick="S.storyClosed = null; history.replaceState(null, '', '#/story/' + encodeURIComponent(S.storySel || '')); viewStory(S.storySel, S.nav)" title="close">×</span></h3>`
+    + (days.length > 1 ? days.map(dd => `<div class="day">${new Date(dd + 'T00:00:00Z').toLocaleDateString('en', {weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'})}</div>` + group(N.filter(n => String(n.closed).slice(0, 10) === dd))).join('') : group(N));
 }
 function storyDetail(p, P) {
   const title = s => (P.find(q => q.slug === s) || {}).title || s;
@@ -760,6 +788,7 @@ async function route() {
   const [, view, ...rest] = location.hash.split('/'); const arg = decodeURIComponent(rest.join('/')); const nav = ++S.nav;
   const tab = {node: 'node', note: 'node', session: 'node', run: 'runs', runs: 'runs', todos: 'todos', ledger: 'ledger', inbox: 'inbox', tree: 'node', storyline: 'storyline', story: 'storyline'}[view] || 'node';
   document.body.classList.toggle('story-mode', tab === 'storyline');
+  if (tab !== 'storyline') S.storyClosed = null;
   $('#zoom').style.display = 'none';
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.v === tab));
   try {

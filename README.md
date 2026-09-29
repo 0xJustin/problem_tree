@@ -114,6 +114,27 @@ via **rescan**.
 - `#/note/<name or path>` renders any vault note read-only (a Markdown reader with wikilink
   support, no Obsidian required).
 
+## Agent skills
+
+`skills/` holds the workflow skills that keep the tree current, in the `SKILL.md` format both pi
+and Claude Code load:
+
+- **wrap-up**: end-of-task bookkeeping — worklog, nodes current and validated, evidence filed,
+  commits listed, scratch removed; may suggest a story point.
+- **brief**: writes a self-contained prompt for a child node, for a fresh session to pick up.
+- **storyline**: proposes and, after the user approves the figures, writes a story point.
+
+They find project locations (the `problems/` folder, worklog, scratch folder, required note
+frontmatter) through the project's `AGENTS.md`. Install by linking each into the harness's skill
+folder:
+
+```
+for s in wrap-up brief storyline; do
+  ln -s "$PWD/skills/$s" ~/.pi/agent/skills/$s
+  ln -s "$PWD/skills/$s" ~/.claude/skills/$s
+done
+```
+
 ## What to adapt for your own project
 
 - `config.yaml` — your vault path, repo links, and (optional) figure-tier scheme.

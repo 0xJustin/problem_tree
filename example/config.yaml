@@ -1,0 +1,13 @@
+# Cockpit config for the toy project in this folder. Run from the repo root:
+#   PROBLEM_TREE_CONFIG=example/config.yaml ./cockpit.sh
+vault: example/vault
+tree_globs: ["02-Projects/*/problems"]
+session_roots: []
+session_cache: ~/.cache/problem-tree/example-sessions.json
+repos:
+  pipeline: https://github.com/example/pipeline
+default_repo: pipeline
+categories:
+  - {name: Data & loading, description: "reading, caching and cleaning recordings", color: "#3f6d99"}
+  - {name: Statistics, description: "clustering, tests, anything that changes a number", color: "#7a5ea8"}
+  - {name: Infrastructure, description: "environments, versions, scripts, CI", color: "#9c7050"}

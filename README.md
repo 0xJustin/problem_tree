@@ -1,153 +1,100 @@
 # problem-tree
 
-A tree-structured problem/task ledger, kept as plain Markdown notes with a spec-checked
-schema, plus a read-only web cockpit to browse it. Built for teams where humans and coding
-agents (pi, Claude Code, ...) work the same backlog side by side: every node is one file,
-every session states which node it's on, and nothing is "the current status" except a
-node's own state in the tree.
+A task tree for research projects, kept as plain Markdown notes and browsed in a small web app. Humans and
+coding agents (Claude Code, pi, …) work from the same tree: every piece of work is a node, every node says
+where it came from and what showed it was done, and a validator keeps the tree honest.
 
-Originated as internal tooling for a connectome-modeling project; genericized here to run
-against any Markdown vault. See `SPEC.md` for the full schema and design rationale (it still
-uses that project as its worked example in places).
+![The cockpit: the tree on the left, one node with its before and after evidence on the right](docs/img/cockpit.png)
 
-```
-validate.py DIR [--tree]      invariants + tree print with rollups; exit 1 on errors (PyYAML only)
-new.py DIR problem|task|observation --parent ID --title "…" [--alias LEGACY-ID] [--discovered-from ID]
-new.py DIR problem --root --prefix xyz --title "…"
-new.py EXPDIR experiment --id NAME --title "…" [--kind ...] [--previous NAME]
-templates/problem.md, task.md, observation.md, experiment.md
-serve.py, webui/, config.yaml   the cockpit (FastAPI, .venv)
+*The pictures on this page come from the toy project in [`example/`](example/). It is invented; nothing in it is real data.*
 
-cluster            cockpit.sh [start|stop|restart|status|logs]       (no arg = foreground)
-Mac app            mac/install.sh · mac/launch.sh · mac/reload.sh · mac/stop.sh · mac/uninstall.sh
-Mac ↔ cluster      mac/remote.sh [start|status|restart|stop]          set HOST to your login node
-```
+## The tree
 
-`DIR` is a project's `problems/` folder, e.g. `~/vault/02-Projects/my-project/problems`.
+One base problem sits at the root. Work that turns up on the way down becomes a child node; nodes close as
+their children resolve.
 
-## Quick start
+![The graph view of the example tree](docs/img/tree-graph.png)
 
-1. `cp config.example.yaml config.yaml` and edit `vault:`, `repos:`, `default_repo:` for your
-   own notes vault and repositories.
-2. `uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python fastapi "uvicorn[standard]" pyyaml markdown`
-   (or `pip install -r requirements.txt` into any Python 3.10+ environment).
-3. Create your first tree: `new.py <vault>/.../problems problem --root --prefix xyz --title "The thing you're trying to solve"`.
-4. Run the cockpit: `./cockpit.sh` (foreground) or `./cockpit.sh start` (background), then open
-   `http://127.0.0.1:8891`.
+| node | shape | what it is |
+|---|---|---|
+| **problem** | circle | something wrong that a measurement shows, fixed by a change later work inherits |
+| **task** | square | everything else met on the way: bugs, paths, plots, refactors |
+| **observation** | diamond | an issue seen and evidenced, parked on purpose; never counted as open work |
 
-## Node model
+Each node is one file, `problems/<id>.md`, with a few lines of frontmatter:
 
-Each node is one Markdown file with frontmatter: `parent:` (null for a root problem), a status
-in `open → fix-proposed → fix-landed → verified → closed` (or `dropped`), and whether it's a
-problem (circle) or task (square). Evidence images live under `media/problems/<id>/` by
-relative path. `validate.py` checks the tree's invariants (every parent exists, no cycles, ids
-match the pattern, evidence present where the schema requires it) and can print the whole tree
-with status rollups. `new.py` is the only thing that should create a node — it mints the id,
-writes the file from `templates/`, and wires `parent:`/`aliases:`/`discovered_from:` correctly.
-
-## Cockpit
-
-Read-only browser over every tree found by `config.yaml › tree_globs`. Two ways to run it:
-
-**As a Mac app, code on a mounted remote.** In a Mac terminal, with the remote volume mounted:
-`bash '/path/to/problem-tree/mac/install.sh'` (needs `MOUNT` and `REMOTE_HOME` set — see the
-script's header). Installs a Python env + config on the Mac's own disk, a launchd agent that
-starts at login, waits for the mount and restarts on exit, and `~/Applications/Problem Tree.app`
-(Dock icon → `http://localhost:8891`). For an own-window app: Safari → File → *Add to Dock*. The
-code stays on the mount, so edits there take effect on the next restart: `bash …/mac/restart.sh`
-(kickstarts the agent, or bootstraps it if the install step failed, stopping any hand-started
-server on the port first). The Mac config sets `path_map` so copied paths and agent
-resume/fork commands come out in remote form, ready to paste into a remote shell. Remove with
-`mac/uninstall.sh`. Log: `~/Library/Logs/problem-tree.log`.
-
-**On the remote host itself, forwarded to a Mac.** `HOST=your.login.host bash …/mac/remote.sh`
-starts `cockpit.sh -d` there if needed and holds a keep-alive tunnel to the same
-`http://localhost:8891` (use `PORT=8890` if the Mac agent holds 8891). Faster first loads and
-galleries if the vault is on local disk there; needs ssh/VPN up and a process on the login node.
-Or just run `cockpit.sh -d` inside any remote session with its own port forwarding.
-
-Every cache (trees, experiment notes, galleries, stage-note index, run files, wikilink index) is
-stale-while-revalidate: a request always gets the last value at once and a background thread
-refreshes it after its TTL (`tree_ttl`, `note_index_ttl`). Caches are warmed at startup, so the
-first click is as fast as the tenth. The session index (for linking agent transcripts to nodes)
-scans `session_roots` in the background, then incrementally by mtime, refreshed periodically or
-via **rescan**.
-
-- **Tree** (left): status dots (red open · orange fix-proposed · yellow fix-landed · green
-  verified · grey closed; squares are tasks; a green ring = soft), rollup badge on interior
-  nodes (`open / soft / collapse / clear`), filter box, *show complete* / *hide tasks* toggles.
-  **Complete nodes (hard-verified, closed, done, dropped) are folded away by default**: a parent
-  shows a small count of what is folded beneath it; when everything below is complete the ⊖
-  handle becomes a green ✓ with the count — click it to reveal that branch, or *show complete*
-  for all. Soft-verified nodes stay visible (they still carry a todo). Search reveals matching
-  complete nodes.
-- **Node**: breadcrumb, pills, before/after evidence side by side (images zoom on click; JSON/CSV
-  tabulate; repo paths and commits link to GitHub per `config.yaml › repos`), fix links, rendered
-  body (wikilinks resolve to notes or nodes; legacy aliases resolve too), children, and
-  **sessions**: one row per agent chat the user started on this node (the first node id the user
-  typed, directly or in a pasted brief path; *all mentions* widens it to every chat where the user
-  typed the id), with copy resume/fork commands and a read-only transcript view.
-- **Copy buttons**: image to clipboard, relative embed for notes in `problems/`, wiki-style embed
-  for any other note, id, link, file path. Clipboard needs a localhost or https origin — hence
-  the ssh tunnel; otherwise the button opens the file instead.
-- **todos**: every leaf problem and task as a sortable table, incomplete rows first, complete rows
-  dimmed below. An evidence column shows two squares, before and after: filled when present,
-  hollow when missing.
-- **ledger**: sortable table of all problems. **inbox**: bullets under a `## Candidates` section
-  in the ledger note, each with a *promote* form (the cockpit's only write — it calls `new.py`);
-  plus a create-by-hand form for tasks.
-- **Theme**: plain, dashboard-neutral CSS out of the box; point it at your own project's
-  stylesheet if you want the cockpit to read as one system with an existing eval dashboard.
-- **Graph interaction**: drag a card to move it (its subtree comes along, edges follow);
-  positions persist per tree in the browser; *reset layout* undoes them. Drag the background to
-  pan, wheel to zoom, *fit* to refit. All hand-rolled SVG (`webui/graph.js`) — no graph library.
-- **runs** (optional): if you configure `experiment_globs`, one row per experiment note → a run
-  page with lineage, free-text sections, linked tree nodes, arms, a config diff vs. a previous
-  run, and a figure gallery organized by `config.yaml › figure_tiers` — built for a validation-card
-  pipeline that tags each figure by tier/stage/card, but the whole `experiments`/`figure_tiers`
-  section is optional if you don't have one.
-- **storyline**: the project's milestones for people — a calendar timeline (drag/wheel pans,
-  ctrl/pinch zooms, ←/→ steps) or a date-ordered list of *story points*, each with a plain-language
-  summary and one or two presentation-ready figures (problem → solution), zoomable and copyable at
-  full resolution. Story points are `type: story` notes in `storyline/` beside `problems/`
-  (SPEC §18), written by the `storyline` skill.
-- `#/note/<name or path>` renders any vault note read-only (a Markdown reader with wikilink
-  support, no Obsidian required).
-
-## Agent skills
-
-`skills/` holds the workflow skills that keep the tree current, in the `SKILL.md` format both pi
-and Claude Code load:
-
-- **wrap-up**: end-of-task bookkeeping — worklog, nodes current and validated, evidence filed,
-  commits listed, scratch removed; may suggest a story point.
-- **brief**: writes a self-contained prompt for a child node, for a fresh session to pick up.
-- **storyline**: proposes and, after the user approves the figures, writes a story point.
-
-They find project locations (the `problems/` folder, worklog, scratch folder, required note
-frontmatter) through the project's `AGENTS.md`. Install by linking each into the harness's skill
-folder:
-
-```
-for s in wrap-up brief storyline; do
-  ln -s "$PWD/skills/$s" ~/.pi/agent/skills/$s
-  ln -s "$PWD/skills/$s" ~/.claude/skills/$s
-done
+```yaml
+type: problem
+id: demo-c3d4
+title: Runtime grew fourfold after the filter change
+parent: demo-root
+status: fix-landed
+resolution: soft              # ok for now, with a todo left
+instrument: "wall-clock minutes per stage, recording 3"
+before: [{artifact: ../media/problems/demo-c3d4/before.png}]
+after:  [{artifact: ../media/problems/demo-c3d4/after.png}]
+fix:    [{pr: pipeline#212}]
 ```
 
-## What to adapt for your own project
+## Evidence
 
-- `config.yaml` — your vault path, repo links, and (optional) figure-tier scheme.
-- `webui/index.html`'s experiment-arms table has a couple of column labels (library names) left
-  over from the origin project's own multi-repo layout; harmless if you don't use the `runs`
-  view, worth a look if you do.
-- The `mac/` scripts need `MOUNT`/`REMOTE_HOME` (and optionally `SSH_HOST`) for your own remote
-  host and mount point — see each script's header comment.
+A problem is not closed on someone's say-so. It needs a *before* figure showing the problem and an *after*
+figure from the same measurement. The cockpit shows them side by side, and `validate.py` refuses a
+`verified` problem that lacks either.
 
-## Setup
+![A node page with its before and after evidence](docs/img/node-evidence.png)
+
+```mermaid
+flowchart LR
+    open --> fix-proposed --> fix-landed --> verified --> closed
+    t1([task: open]) --> t2([done · dropped])
+    o1([observation: noted]) --> o2([promoted · dismissed])
+```
+
+## What is left to do
+
+The **todos** tab lists every open leaf. Two squares per row show whether the before and after evidence
+exists; finished work is dimmed below.
+
+![The todos table](docs/img/todos.png)
+
+## Storyline
+
+The tree is the detailed record. The **storyline** tab is the short version for people: one *story point* per
+milestone, with a plain-language summary and a problem figure next to a solution figure. Tasks closed per
+day appear as bars under the timeline.
+
+![The storyline timeline and one story point](docs/img/storyline.png)
+
+## Working with agents
+
+Agents state which node they are working on, open tasks under it, and file evidence in the node. The cockpit
+finds the chat sessions that mention each node, so a node leads back to the conversation that worked on it.
+Three skills in [`skills/`](skills/) keep the tree current:
+
+- **wrap-up** closes a session's bookkeeping: nodes current, evidence filed, validator run.
+- **brief** writes a self-contained prompt for a child node, so a fresh session can pick it up.
+- **storyline** proposes a story point and writes it once you approve the figures.
+
+## Try it
 
 ```
-uv venv --python 3.13 .venv
-uv pip install --python .venv/bin/python fastapi "uvicorn[standard]" pyyaml markdown
+pip install -r requirements.txt
+python validate.py example/vault/02-Projects/demo/problems --tree         # the tree, with rollups
+PROBLEM_TREE_CONFIG=example/config.yaml python serve.py                    # then open http://127.0.0.1:8891
 ```
-or `pip install -r requirements.txt`.
+
+For your own project: `cp config.example.yaml config.yaml`, point `vault:` at your notes, then create the
+root with `python new.py <vault>/.../problems problem --root --prefix xyz --title "What you are trying to solve"`.
+
+## Where things are
+
+| | |
+|---|---|
+| `SPEC.md` | the schema, invariants, and reasoning |
+| `AGENTS.md` | commands, configuration, and rules for agents using or changing the tool |
+| `validate.py`, `new.py` | check the tree; create nodes |
+| `serve.py`, `webui/` | the cockpit (FastAPI and a hand-written SVG front end) |
+| `templates/` | one template per node type |
+| `skills/` | the agent skills |
+| `example/` | the toy project behind the pictures, and the scripts that regenerate them |

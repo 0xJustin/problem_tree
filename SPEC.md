@@ -6,7 +6,7 @@ done 2026-09-21; cockpit (§10) delivered 2026-09-21 as `serve.py` + `webui/inde
 
 ## 1. Purpose
 
-Work on this project is a tree: one base problem (infer neural activity from behaviour),
+Work on this project is a tree: one base problem (the question the project exists to answer),
 subproblems found on the way down, collapsed back up as they resolve, with new problems
 discovered on the way back. Each node needs (a) evidence the problem exists, with
 provenance, (b) the work that addressed it, (c) evidence it was addressed, and (d) a way
@@ -265,34 +265,27 @@ default (2026-10-03, xyz-obiw), a checkpoint step in a file name folded into the
 
 Rejected (user, 2026-09-21): *promote to evidence* from the UI — too much mechanism;
 evidence attachment stays with the agent/editor. Deferred: a `lineage` graph view; orphan
-figure folders (`media/dn_rhythmicity*`, `rigging_2026-09-11`) with no experiment note.
+figure folders (`media/<name>*`) with no experiment note.
 
-## 16. Figure tiers (user scheme, 2026-09-21)
+## 16. Figure tiers
 
-Run galleries are ordered by five questions, encoded in the cockpit's `config.yaml › figure_tiers`
-(not in code): **1 training** — did the run learn? (`training/*`, `training_curves*`) ·
-**2 rigging** — are inputs and outputs wired through? (`R.*`, `health_stimulus`, `health_motor_path`,
-`rigging_*`) · **3 biophysics & health** — is the model in a physiological regime?
-(`activity/*` and `*_activity` first, then `E.*`, `health_voltage*`, `health_episode*`) ·
-**4 sensory organs** — do the sensors behave like the literature? (`G.*`, `J.*`, `N.*`, `T.*`) ·
-**5 circuit & behaviour** — does the circuit do what the papers say? (`D.*`, `H.*`, `I.*`, clamp
-`A.* B.* C.* K.* M.*`, gait `S.*`, discriminators `X.*`, `video/*` last). Within a tier: pattern order,
-then `stage_order` (init → checkpoint → final → health → health_nokill → nokill), then card; an
-aggregate precedes its `*_examples/` instances, which are folded by default. Top-level files in `figures:` folders are aggregations across arms and sit above the tiers ("across arms");
-subfolders there are arms. Per-run figures no pattern claims are shown under "other" — acceptable for
-one-off experiments; a recurring family gets a pattern, never a server-side guess.
+Run galleries are ordered by a list of questions the project asks of every run, encoded in the cockpit's
+`config.yaml › figure_tiers` (not in code). A tier has a `name`, a `question` and `match` patterns (`fnmatch` on
+the card stem, or on the stage-stripped path when the pattern contains `/`). Within a tier: pattern order, then
+`stage_order`, then card name; an aggregate precedes its `*_examples/` instances, which are folded by default.
+Top-level files in a `figures:` folder are aggregations across arms and sit above the tiers ("across arms");
+subfolders there are arms. Per-run figures no pattern claims are shown under "other"; a recurring family gets a
+pattern, never a server-side guess.
 
-**Revised 2026-09-29 (user):** training > rigging > biophysics > ensemble > meta > video > perturbation >
-recordings, the protocol order of `my_repo`'s packages. A card id's prefix names its question,
-so circuit and behaviour cards cannot be placed by pattern (`circuit.*` comes from ensemble, perturbation and
-recordings); tiers with `index: <protocol>` take the cards `card_index.yaml` assigns to that protocol. The
-index is generated from the project's source by `index_cards.py` (a card goes to the one package whose code names
-it; old letter ids follow their alias) and is checked before patterns. Re-run it when cards change.
+A card's id prefix names its question, not the protocol that produced it, so some cards cannot be placed by
+pattern. A tier with `index: <protocol>` instead takes the cards that the file named by `config.yaml ›
+card_index` assigns to that protocol (`{cards: {card_id: protocol}}`); a project generates that file with its own
+script and checks it before patterns.
 
 ## 17. Runs as a control surface (2026-09-22)
 
 The run page launches the two tools a run is read with: **TensorBoard** over the experiment's `runs/`
-and the **Observatory** (the project's eval dashboard: `dashboard/launch_dashboard_from_checkpoints.sh`
+and the project's **eval dashboard** (`launch_dashboard_from_checkpoints.sh`
 build = LSF GPU job over the sweep with a spec, serve = a web server over the bundle). Services run
 where the cluster filesystem is native — locally when the cockpit is on the cluster, via
 `ssh services.ssh_host` plus an automatic `ssh -L` forward when on the Mac — on ports from

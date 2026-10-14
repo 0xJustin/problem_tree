@@ -62,6 +62,8 @@ class Config:
         self.session_roots = [expand(p) for p in c.get("session_roots", [])]
         self.session_cache = expand(c.get("session_cache", "~/.cache/problem-tree/sessions.json"))
         self.repos = c.get("repos", {})
+        # Optional taxonomy for color-coding nodes: [{name, description, color}]. A node's `category` may be any string.
+        self.categories = c.get("categories", [])
         self.default_repo = c.get("default_repo")
         # local prefix -> prefix as the cluster sees it; applied to copyable paths/commands
         self.path_map = {str(pathlib.Path(k).expanduser()): v for k, v in (c.get("path_map") or {}).items()}
@@ -616,20 +618,6 @@ def config_diff(a, b):
     fa, fb = flatten(a), flatten(b)
     keys = sorted(set(fa) | set(fb))
     return [{"key": k, "from": fa.get(k, "∅"), "to": fb.get(k, "∅")} for k in keys if fa.get(k, "∅") != fb.get(k, "∅")]
-
-
-# Optional, best-effort categorical tag for color-coding the tree — not enforced by validate.py.
-# A node's `category` isn't restricted to this list (a custom recategorize prompt may return
-# something else); this is the starting taxonomy + the colors the UI knows how to render.
-TAXONOMY = [
-    {"name": "Sensory rigging", "description": "organ/sensor transduction, campaniform, FeCO, tactile bristles, sensory bounds/units", "color": "#3f6d99"},
-    {"name": "Motor decoding", "description": "MN/muscle decoder, expert gait, body springs/biomechanical asymmetry", "color": "#7a5ea8"},
-    {"name": "Biophysics & init calibration", "description": "conductance/tau/voltage calibration, init-state health", "color": "#8a7a2e"},
-    {"name": "Training & evaluation", "description": "DAgger/LatentODE training dynamics, eval methodology, survival metric", "color": "#a8527a"},
-    {"name": "Pipeline & repo infra", "description": "cross-repo sync, full-pipeline audits, upstream bug reports, worktree/branch admin", "color": "#9c7050"},
-    {"name": "Cockpit/dashboard tooling", "description": "the problem-tree/cockpit UI itself", "color": "#4a8a7a"},
-    {"name": "Literature & recordings", "description": "recorded expert data, literature-card grounding", "color": "#b0762e"},
-]
 
 
 def set_frontmatter_field(path, key, value):
@@ -1557,7 +1545,7 @@ def build_app(cfg):
 
     @app.get("/api/categories")
     def api_categories():
-        return TAXONOMY
+        return cfg.categories
 
     class Categorize(BaseModel):
         prompt: str | None = None
@@ -1572,7 +1560,7 @@ def build_app(cfg):
         text = path.read_text(encoding="utf-8")
         end = text.find("\n---", 4)
         body_md = text[end + 4:][:4000] if end >= 0 else ""
-        taxonomy_desc = "\n".join(f"- {c['name']}: {c['description']}" for c in TAXONOMY)
+        taxonomy_desc = "\n".join(f"- {c['name']}: {c['description']}" for c in cfg.categories)
         prompt = (f"Categorize this single problem-tree node into exactly ONE category.\n\n"
                   f"Existing taxonomy (prefer one of these unless the guidance below clearly calls for something else):\n{taxonomy_desc}\n\n"
                   f"Node id: {n['id']}\nNode title: {n['title']}\nNode body:\n{body_md}\n\n"

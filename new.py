@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Mint a node id and write a new problem or task file from a template.
+"""Mint a node id and write a new problem, task or observation file from a template.
 
-usage: new.py DIR problem|task --parent ID --title "..." [--alias P-nn ...] [--discovered-from ID] [--assignee WHO]
+usage: new.py DIR problem|task|observation --parent ID --title "..." [--alias P-nn ...] [--discovered-from ID] [--assignee WHO]
        new.py DIR problem --root --prefix xyz --title "..."
        new.py EXPDIR experiment --id NAME --title "..." [--kind dagger|expert|grid|init-study] [--previous ID ...] [--prefix xyz]
 
@@ -45,7 +45,7 @@ def mint(prefix, title, taken):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("dir")
-    ap.add_argument("type", choices=("problem", "task", "experiment"))
+    ap.add_argument("type", choices=("problem", "task", "observation", "experiment"))
     ap.add_argument("--title", required=True)
     ap.add_argument("--id", help="experiment name (experiments are named, not hashed)")
     ap.add_argument("--kind", default="dagger")

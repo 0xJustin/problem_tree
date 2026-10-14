@@ -5,14 +5,14 @@ const Timeline = (() => {
   const DAY = 864e5, H = 200, AXIS = 118, LANES = [92, 66, 40];
   const KIND = {decision: ['var(--acc)', 'decision'], 'problem-exposed': ['var(--open)', 'problem exposed'],
                 fix: ['var(--task)', 'fix'], overview: ['var(--prop)', 'overview']};
-  const T = {svg: null, points: [], closed: {}, today: null, x0: 0, x1: 0, sel: null, onPick: null, onBars: null, range: null};
+  const T = {svg: null, points: [], closed: {}, closeouts: [], today: null, x0: 0, x1: 0, sel: null, onPick: null, onBars: null, range: null};
   const iso = t => new Date(t).toISOString().slice(0, 10);
   const ms = d => Date.parse(String(d).slice(0, 10) + 'T00:00:00Z');
   const color = k => (KIND[k] || ['var(--mute)'])[0];
 
   function mount(svg, data, sel, onPick, onBars, range) {
     const keep = T.svg === svg && T.x1 > T.x0;  // same strip re-rendered: keep the user's pan/zoom
-    Object.assign(T, {svg, points: data.points, closed: data.closed, today: ms(data.today), sel, onPick, onBars, range});
+    Object.assign(T, {svg, points: data.points, closed: data.closed, closeouts: data.closeouts || [], today: ms(data.today), sel, onPick, onBars, range});
     if (!keep) fit(); else reveal(sel);
     if (!svg.dataset.wired) wire(svg);
     draw();
@@ -82,19 +82,19 @@ const Timeline = (() => {
   function draw() {
     const svg = T.svg, W = svg.clientWidth || 800, X = t => (t - T.x0) / (T.x1 - T.x0) * W;
     // bars: one per day, or per Monday-start week once a day is narrower than 6 px
-    const dayPx = W / ((T.x1 - T.x0) / DAY), weekly = dayPx < 6, bins = {};
-    for (const [d, n] of Object.entries(T.closed)) {
-      const t = ms(d), start = weekly ? t - ((new Date(t).getUTCDay() + 6) % 7) * DAY : t;
-      bins[start] = (bins[start] || 0) + n;
-    }
+    const dayPx = W / ((T.x1 - T.x0) / DAY), weekly = dayPx < 6, bins = {}, logged = new Set();
+    const bin = d => { const t = ms(d); return weekly ? t - ((new Date(t).getUTCDay() + 6) % 7) * DAY : t; };
+    for (const [d, n] of Object.entries(T.closed)) bins[bin(d)] = (bins[bin(d)] || 0) + n;
+    for (const d of T.closeouts) { const s = bin(d); logged.add(String(s)); bins[s] = bins[s] || 0; }  // a closeout day is clickable without closed tasks
     const barMax = Math.max(1, ...Object.values(bins)), span = weekly ? 7 * DAY : DAY, bw = Math.max(3, Math.min(16, (weekly ? 7 : 1) * dayPx * 0.7));
     let h = `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>`;
     for (const [start, n] of Object.entries(bins)) {
       const from = iso(+start), to = iso(+start + span - DAY), x = X(+start + span / 2), bh = 3 + 27 * n / barMax;
       const on = T.range && T.range[0] <= to && T.range[1] >= from;
-      h += `<g class="tl-bar${on ? ' on' : ''}" data-from="${from}" data-to="${to}"><title>${weekly ? 'week of ' + from : from} · ${n} closed</title>
-        <rect x="${x - bw / 2 - 3}" y="${AXIS + 20}" width="${bw + 6}" height="44" fill="transparent"/>
-        <rect x="${x - bw / 2}" y="${AXIS + 22}" width="${bw}" height="${bh}" rx="1.5"/>`
+      h += `<g class="tl-bar${on ? ' on' : ''}" data-from="${from}" data-to="${to}"><title>${weekly ? 'week of ' + from : from} · ${n} closed${logged.has(start) ? ' · closeout' : ''}</title>
+        <rect x="${x - bw / 2 - 3}" y="${AXIS + 6}" width="${bw + 6}" height="58" fill="transparent"/>
+        ${n ? `<rect x="${x - bw / 2}" y="${AXIS + 22}" width="${bw}" height="${bh}" rx="1.5"/>` : ''}`
+        + (logged.has(start) ? `<circle class="tl-log" cx="${x}" cy="${AXIS + 13}" r="2.5"/>` : '')
         + (n === barMax ? `<text x="${x}" y="${AXIS + 22 + bh + 11}" class="tl-count">${n}</text>` : '') + '</g>';
     }
     h += `<line x1="0" x2="${W}" y1="${AXIS}" y2="${AXIS}" stroke="var(--line2)" stroke-width="1.5"/>` + ticks(X, W);

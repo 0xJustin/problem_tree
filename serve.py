@@ -7,12 +7,13 @@ Run it where the vault is on local disk (the cluster); open it in a browser thro
 same tunnel you use for code-server. Everything is read from disk per request except the
 session index (background scan, cached). Writes: POST /api/promote -> new.py; POST
 /api/node/{id}/categorize -> `claude -p` one-shot classification, written back as frontmatter `category:`.
-Spec: agent_project_information/artifacts/2026-09-21_problem-tree-spec/SPEC.md §10.
+Spec: SPEC.md §10.
 """
 import argparse
 import datetime as dt
 import fnmatch
 import json
+import os
 import pathlib
 import re
 import shlex
@@ -43,6 +44,7 @@ ID_TOKEN = re.compile(r"\b[a-z]{2,8}-[0-9a-z]{4}\b|\bP-\d{2}\b|\b\d\d-\d\d-\d{4}
 CACHE_VERSION = 4
 RUN_ID = re.compile(r"\b\d\d-\d\d-\d{4}_\d\d-\d\d_[a-z0-9]{8}\b")
 WIKI_EMBED = re.compile(r"!\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
+CLOSEOUT_HEAD = "## Agent Work Log"   # the section the closeout skill owns in a daily note
 WIKI_LINK = re.compile(r"(?<!!)\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
 REL_IMG = re.compile(r"!\[([^\]]*)\]\((?!https?://|/|#)([^)\s]+)\)")
 
@@ -64,12 +66,15 @@ class Config:
         # local prefix -> prefix as the cluster sees it; applied to copyable paths/commands
         self.path_map = {str(pathlib.Path(k).expanduser()): v for k, v in (c.get("path_map") or {}).items()}
         self.figure_tiers = c.get("figure_tiers", [])
+        ci = pathlib.Path(path).parent / c["card_index"] if c.get("card_index") else None
+        self.card_index = (yaml.safe_load(ci.read_text()) or {}).get("cards", {}) if ci and ci.is_file() else {}
         self.stage_order = c.get("stage_order", ["init", "checkpoint", "final", "health", "health_nokill", "nokill", "run"])
         self.experiment_globs = c.get("experiment_globs", ["02-Projects/*/*/experiments"])
         self.run_media = c.get("run_media", "../media/single/{run_id}")   # relative to the experiment note
         self.tree_ttl = float(c.get("tree_ttl", 2))          # seconds; collapses re-reads within a request
         self.note_index_ttl = float(c.get("note_index_ttl", 30))
         self.note_index_skip = set(c.get("note_index_skip", ["media"]))
+        self.daily_dir = c.get("daily_dir", "01-Daily")   # <year>/<month>/<date>-<weekday>.md, closeout's layout
 
         s = c.get("services") or {}
         self.ssh_host = s.get("ssh_host") or None
@@ -281,6 +286,8 @@ class Experiments:
         tiers); a subfolder is treated as an arm (its own name, or the matching arm's run id)."""
         figs = []
         for a in e.get("arms") or []:
+            if not a.get("run_id"):  # a job-only arm (continuation, eval) has no media folder
+                continue
             d = self.media_dir(e, a["run_id"])
             if d.is_dir():
                 figs += self._walk(d, a.get("name") or "main", a["run_id"], "run")
@@ -294,7 +301,7 @@ class Experiments:
                     figs += self._walk_files(d, [p], None, None, "experiment")
                 elif p.is_dir():
                     a = arm_by_name.get(p.name)
-                    figs += self._walk(p, p.name, a["run_id"] if a else None, "run")
+                    figs += self._walk(p, p.name, a.get("run_id") if a else None, "run")
         return figs
 
     def _walk(self, d, arm, run_id, level="run"):
@@ -345,6 +352,50 @@ class Experiments:
             o["verdict"] = "PASS" if o["n_fail"] == 0 and o["n_pass"] else ("FAIL" if o["n_pass"] == 0 and o["n_fail"] else ("MIXED" if o["n_pass"] and o["n_fail"] else "INCONCLUSIVE"))
             o["names"] = o["names"][:12]
         self._vcache[key] = out
+        return out
+
+    def card_table(self, e):
+        """{stage: [{card, tier, order, cells: {arm: {verdict, n, n_pass, n_fail, value, soft, names}}}]}: one row per
+        card (`[instance]` stripped, so instance cards collapse to n_pass/n), one cell per arm, from each arm's
+        <run>/<stage>[_examples]/results.jsonl. meta.group_ran[...] rows are kept only when INCONCLUSIVE."""
+        stages = {}
+        for a in e.get("arms") or []:
+            if not a.get("run_id"):
+                continue
+            d = self.media_dir(e, a["run_id"])
+            for f in sorted(d.glob("*/results.jsonl")) if d.is_dir() else []:
+                stage = re.sub(r"_examples$", "", f.parent.name)
+                cards = stages.setdefault(stage, {})
+                for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+                    try:
+                        r = json.loads(line)
+                    except ValueError:
+                        continue
+                    name = r.get("name") or ""
+                    card = re.sub(r"\[.*", "", name)
+                    c = cards.setdefault(card, {}).setdefault(a.get("name") or "main", {"n": 0, "n_pass": 0, "n_fail": 0, "soft": bool(r.get("soft")), "names": []})
+                    c["n"] += 1
+                    c["n_pass"] += r.get("verdict") == "PASS"
+                    c["n_fail"] += r.get("verdict") == "FAIL"
+                    c["names"].append(name)
+                    tb = (r.get("detail") or {}).get("traceback") if isinstance(r.get("detail"), dict) else None
+                    if tb and "traceback" not in c:
+                        c["traceback"] = str(tb)[-1500:]
+                    if c["n"] == 1:
+                        v = r.get("value")
+                        c["value"] = v if isinstance(v, (int, str, type(None))) or (isinstance(v, float) and v == v and abs(v) != float("inf")) else str(v)
+        out = {}
+        for stage, cards in stages.items():
+            rows = []
+            for card, cells in cards.items():
+                for c in cells.values():
+                    c["verdict"] = "PASS" if c["n_fail"] == 0 and c["n_pass"] else ("FAIL" if c["n_pass"] == 0 and c["n_fail"] else ("MIXED" if c["n_pass"] and c["n_fail"] else "INCONCLUSIVE"))
+                    c["names"] = c["names"][:12]
+                if card.startswith("meta.group_ran") and all(c["verdict"] != "INCONCLUSIVE" for c in cells.values()):
+                    continue
+                cl = classify(self.cfg, pathlib.Path(stage) / f"{card}.png")
+                rows.append({"card": card, "tier": cl["tier"], "cells": cells})
+            out[stage] = sorted(rows, key=lambda r: (r["tier"] or 99, r["card"]))
         return out
 
     _rf = {}
@@ -419,6 +470,13 @@ def classify(cfg, rel):
     pm = re.match(r"^(init|ckpt(\d+)|checkpoint(\d*)|final)_(.+)$", stem)   # init_activity.png, ckpt6000_posterior_activity.png
     if pm and folder in ("activity", ""):
         stage, card = pm.group(1), pm.group(4)
+    # an env-step suffix (video/bout_0_600309760.mp4, leg_load_<step>.png) is a checkpoint, not part of the plot's
+    # name, so runs saved at different steps share one row on the run page
+    step = None
+    sm = re.match(r"^(.+)_(\d{6,})$", card)
+    if sm:
+        card, step = sm.group(1), int(sm.group(2))
+        ckpt = step
     cm = re.match(r"^(?:ckpt|checkpoint)(\d+)$", stage)
     if cm:
         ckpt, stage_key = int(cm.group(1)), "checkpoint"
@@ -427,7 +485,13 @@ def classify(cfg, rel):
     sub = str(rel) if not example else f"{folder}/{rel.name}"
     tier = tier_name = None
     family = 99
+    proto = cfg.card_index.get(card)
     for ti, t in enumerate(cfg.figure_tiers):
+        if proto and t.get("index") == proto:
+            tier, tier_name, family = ti + 1, t.get("name", str(ti + 1)), 0
+            break
+        if proto:                            # an indexed card goes to its protocol, not to a pattern
+            continue
         for fi, pat in enumerate(t.get("match") or []):
             hit = (fnmatch.fnmatch(str(rel), pat) or fnmatch.fnmatch(sub, pat)) if "/" in pat else (fnmatch.fnmatch(card, pat) or fnmatch.fnmatch(stem, pat))
             if hit:
@@ -438,7 +502,7 @@ def classify(cfg, rel):
     so = cfg.stage_order
     stage_idx = so.index(stage_key) if stage_key in so else len(so) + (0 if stage_key == "training" else 1)
     return {"tier": tier, "tier_name": tier_name, "family": family, "stage": stage, "card": card, "instance": instance,
-            "example": example, "pillar": card.split(".")[0] if "." in card else "",
+            "example": example, "step": step, "pillar": card.split(".")[0] if "." in card else "",
             "order": [tier or 99, family, stage_idx, ckpt, stage, card, instance or ""]}
 
 
@@ -581,6 +645,37 @@ def set_frontmatter_field(path, key, value):
     pattern = re.compile(rf"^{re.escape(key)}:.*$", re.MULTILINE)
     fm_text = pattern.sub(line, fm_text, count=1) if pattern.search(fm_text) else fm_text.rstrip("\n") + "\n" + line
     path.write_text("---\n" + fm_text + rest, encoding="utf-8")
+
+
+def _member_id(m):
+    return m.get("id") if isinstance(m, dict) else None
+
+
+def sprint_members(t, n):
+    """A sprint's members in rank order (SPEC §19), resolved through aliases, each with the node it lives under.
+    Entries validate.py rejects are skipped."""
+    alias = {a: i for i, x in t["nodes"].items() for a in x.get("aliases") or []}
+    rows, seen = [], {n["id"]}
+    for m in n.get("members") or []:
+        x = t["nodes"].get(alias.get(_member_id(m), _member_id(m)))
+        if x is None or x["id"] in seen:
+            continue
+        seen.add(x["id"])
+        p = t["nodes"].get(x.get("parent"))
+        rows.append({k: x.get(k) for k in ("id", "title", "type", "status", "resolution", "label", "rollup")}
+                    | {"priority": m.get("priority"), "owner": m.get("owner"),
+                       "under": {"id": p["id"], "title": p["title"]} if p else None})
+    return rows
+
+
+def sprints_of(t, n):
+    """The sprints that list node n (by id or alias), with its rank and priority in each."""
+    names, out = {n["id"], *(n.get("aliases") or [])}, {}
+    for s in t["nodes"].values():
+        for k, m in enumerate(s.get("members") or []):
+            if _member_id(m) in names and s["id"] != n["id"] and s["id"] not in out:
+                out[s["id"]] = {"id": s["id"], "title": s["title"], "priority": m.get("priority"), "rank": k + 1}
+    return list(out.values())
 
 
 def public(n):
@@ -1073,6 +1168,15 @@ def build_app(cfg):
     services = Services(cfg)
     stories = Storyline(cfg, trees)
 
+    def _closeouts():  # date -> daily note holding the closeout skill's section
+        out = {}
+        for p in (cfg.vault / cfg.daily_dir).glob("*/*/*.md"):
+            m = re.match(r"(\d{4}-\d{2}-\d{2})", p.name)
+            if m and CLOSEOUT_HEAD in p.read_text(encoding="utf-8", errors="replace"):
+                out[m.group(1)] = p
+        return out
+    closeouts = Stale(_closeouts, cfg.note_index_ttl)
+
     def exp_paths(e):
         """Cluster-side paths for an experiment: repo root, experiment dir, runs dir, observatory bundle."""
         root = cfg.repo_roots.get(e.get("repo") or cfg.default_repo)
@@ -1095,7 +1199,8 @@ def build_app(cfg):
                 experiments.gallery(e)
                 experiments.stage_notes(e)
                 for a in e.get("arms") or []:
-                    experiments.run_files(e, a["run_id"])
+                    if a.get("run_id"):
+                        experiments.run_files(e, a["run_id"])
         except Exception as exc:  # a broken note must not take the server down
             print("warm-up:", exc, flush=True)
         sessions.start()
@@ -1144,6 +1249,8 @@ def build_app(cfg):
             "discovered_from": ({"id": n["discovered_from"], "title": t["nodes"][n["discovered_from"]]["title"]}
                                 if n.get("discovered_from") in t["nodes"] else None),
             "discovered": [{"id": o["id"], "title": o["title"]} for o in t["nodes"].values() if o.get("discovered_from") == n["id"]],
+            "members": sprint_members(t, n),
+            "in_sprints": sprints_of(t, n),
             "before": [resolve_evidence(cfg, notes, trees, e, path.relative_to(cfg.vault)) for e in n.get("before") or []],
             "after": [resolve_evidence(cfg, notes, trees, e, path.relative_to(cfg.vault)) for e in n.get("after") or []],
             "artifact": (resolve_evidence(cfg, notes, trees, {"artifact": n["artifact"]}, path.relative_to(cfg.vault))
@@ -1182,7 +1289,21 @@ def build_app(cfg):
             if n.get("closed"):
                 d = str(n["closed"])[:10]
                 closed[d] = closed.get(d, 0) + 1
-        return {"points": out, "closed": closed, "today": time.strftime("%Y-%m-%d")}
+        return {"points": out, "closed": closed, "today": time.strftime("%Y-%m-%d"), "closeouts": sorted(closeouts.get())}
+
+    @app.get("/api/closeout/{date}")
+    def api_closeout(date: str):
+        """The Agent Work Log section of one day's note, bare node ids linked."""
+        p = closeouts.get().get(date)
+        if not p:
+            raise HTTPException(404, f"no closeout for {date}")
+        text = p.read_text(encoding="utf-8", errors="replace")
+        sec = text[text.index(CLOSEOUT_HEAD):].split("\n", 1)[1]
+        sec = re.split(r"^## ", sec, maxsplit=1, flags=re.M)[0]
+        ids = trees.all_ids()
+        sec = re.sub(r"(?<![\w\[`/-])([a-z]+-[0-9a-z]{4})\b", lambda m: f"[[{m.group(1)}]]" if m.group(1) in ids else m.group(1), sec)
+        rel = p.relative_to(cfg.vault)
+        return {"date": date, "path": str(rel), "html": render.html(sec, rel)}
 
     @app.get("/api/experiments")
     def api_experiments():
@@ -1192,7 +1313,7 @@ def build_app(cfg):
             p["launched"] = str(e.get("launched") or "")
             p["n_arms"] = len(e.get("arms") or [])
             p["n_nodes"] = len(e.get("nodes") or [])
-            p["n_figures"] = sum(1 for a in e.get("arms") or [] if experiments.media_dir(e, a["run_id"]).is_dir())
+            p["n_figures"] = sum(1 for a in e.get("arms") or [] if a.get("run_id") and experiments.media_dir(e, a["run_id"]).is_dir())
             p["progress"] = progress(e)
             paths = exp_paths(e)
             p["tb"] = services.status(f"tb-{e['id']}")["running"]
@@ -1329,9 +1450,9 @@ def build_app(cfg):
         nxt = [{"id": o["id"], "title": o["title"]} for o in experiments.all() if e["id"] in (o.get("previous") or [])]
         arms = []
         for a in e.get("arms") or []:
-            files = experiments.run_files(e, a["run_id"])
+            files = experiments.run_files(e, a["run_id"]) if a.get("run_id") else {}
             prov = files.get("provenance") or {}
-            arms.append({**a, "media": experiments.media_dir(e, a["run_id"]).is_dir(),
+            arms.append({**a, "media": bool(a.get("run_id")) and experiments.media_dir(e, a["run_id"]).is_dir(),
                          "provenance": {k: {kk: v.get(kk) for kk in ("commit", "branch", "dirty")} for k, v in (prov.get("libraries") or {}).items()} if prov else None,
                          "bundle": (prov.get("bundle") or {}).get("path") if prov else None, "has_config": "config" in files})
         tokens = [e["id"], *[a["run_id"] for a in e.get("arms") or [] if a.get("run_id")]]
@@ -1339,7 +1460,7 @@ def build_app(cfg):
             tokens.append(pathlib.Path(e["experiment_dir"]).name)
         return {"experiment": public(e) | {"launched": str(e.get("launched") or "")}, "path_remote": cfg.remote(path),
                 "body_html": render.html(body, path.relative_to(cfg.vault)), "nodes": linked, "previous": prev, "next": nxt,
-                "arms": arms, "gallery": experiments.gallery(e), "stage_notes": experiments.stage_notes(e),
+                "arms": arms, "gallery": experiments.gallery(e), "cards": experiments.card_table(e) if len(arms) > 1 else {}, "stage_notes": experiments.stage_notes(e),
                 "tiers": [{"tier": i + 1, "name": tt.get("name"), "question": tt.get("question")} for i, tt in enumerate(cfg.figure_tiers)],
                 "unassigned": sorted({f["card"] for f in experiments.gallery(e) if f["tier"] is None and f["level"] == "run"}),
                 "repo_url": link_repo(cfg, e.get("repo"), path=e.get("experiment_dir")) if e.get("experiment_dir") else None,
@@ -1351,7 +1472,7 @@ def build_app(cfg):
         e, o = experiments.get(ident), experiments.get(vs)
         if not e or not o:
             raise HTTPException(404, "experiment not found")
-        pick = lambda ex, name: next((a for a in ex.get("arms") or [] if not name or a.get("name") == name), None)  # noqa: E731
+        pick = lambda ex, name: next((a for a in ex.get("arms") or [] if a.get("run_id") and (not name or a.get("name") == name)), None)  # noqa: E731
         a, b = pick(e, arm), pick(o, vs_arm or arm)
         if not a or not b:
             raise HTTPException(404, "arm not found")
@@ -1477,7 +1598,7 @@ def build_app(cfg):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--config", default=str(HERE / "config.yaml"))
+    ap.add_argument("--config", default=os.environ.get("PROBLEM_TREE_CONFIG") or str(HERE / "config.yaml"))
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8891)
     args = ap.parse_args()

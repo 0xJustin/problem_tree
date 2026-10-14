@@ -4,7 +4,7 @@
 usage: validate.py DIR [--tree]
 
 DIR holds one markdown file per node (<id>.md) with the frontmatter described in
-~/brain/.claude/tools/problem-tree/SPEC.md §5–6.
+SPEC.md §5–6.
 Exit 1 on any error. Warnings are reported, never fixed.
 """
 import argparse
@@ -20,11 +20,14 @@ except ImportError:
 
 PROBLEM_STATUS = ("open", "fix-proposed", "fix-landed", "verified", "closed")
 TASK_STATUS = ("open", "done", "dropped")
+OBSERVATION_STATUS = ("noted", "promoted", "dismissed")
+VOCAB = {"problem": PROBLEM_STATUS, "task": TASK_STATUS, "observation": OBSERVATION_STATUS}
 UNRESOLVED = {"open", "fix-proposed", "fix-landed"}
 PAST_OPEN = {"fix-proposed", "fix-landed", "verified"}
 # Tasks closed before this date predate the evidence standard and are not held to it.
 STANDARD_SINCE = "2026-09-24"
 ASSIGNEE = re.compile(r"justin|agent|(pi|claude):\S+")
+PRIORITY = ("P1", "P2", "P3")
 CHECKBOX = re.compile(r"^\s*[-*] \[[ xX~]\]|#task\b")
 
 
@@ -93,8 +96,8 @@ def check(nodes):
             E.append((i, f"filename {n['_path'].name} != id"))
         if not n.get("title"):
             E.append((i, "title empty"))
-        if t not in ("problem", "task"):
-            E.append((i, f"type {t!r} not problem|task"))
+        if t not in VOCAB:
+            E.append((i, f"type {t!r} not {'|'.join(VOCAB)}"))
             continue
         for key in ("parent", "discovered_from"):
             ref = n.get(key)
@@ -107,7 +110,7 @@ def check(nodes):
                 break
             seen.add(cur)
             cur = byid[cur].get("parent")
-        vocab = PROBLEM_STATUS if t == "problem" else TASK_STATUS
+        vocab = VOCAB[t]
         if s not in vocab:
             E.append((i, f"status {s!r} not in {'|'.join(vocab)}"))
         for key, art in _artifacts(n):
@@ -116,6 +119,8 @@ def check(nodes):
         if t == "problem":
             sub = any(byid[c].get("type") == "problem" for c in children[i])
             _check_problem(n, sub, E, W)
+        elif t == "observation":
+            _check_observation(n, byid, E)
         elif s in ("done", "dropped") and not n.get("closed"):
             E.append((i, f"{s} without a closed date"))
         elif s == "done" and not n.get("after") and not pre_standard(n):
@@ -123,8 +128,52 @@ def check(nodes):
         who = n.get("assignee")
         if who is not None and not ASSIGNEE.fullmatch(str(who)):
             W.append((i, f"assignee {who!r} not justin|agent|pi:<session>|claude:<session>"))
+    _check_members(nodes, byid, aliases, E, W)
     _check_rollup(byid, children, W)
     return E, W
+
+
+def _check_members(nodes, byid, aliases, E, W):
+    """Sprints (SPEC §19): `members:` lists nodes anywhere in the tree, in rank order. The sprint's one `sprint-*`
+    tag is mirrored on every member so Obsidian can filter by it; the list stays the source of truth."""
+    owner_of, listed = {}, defaultdict(set)
+    for n in nodes:
+        if not n.get("members"):
+            continue
+        i = n["id"]
+        tags = [str(t) for t in n.get("tags") or [] if str(t).startswith("sprint-")]
+        if len(tags) != 1:
+            W.append((i, f"a sprint needs exactly one sprint-* tag, has {tags or 'none'}"))
+        for t in tags:
+            owner_of[t] = i
+        for m in n["members"]:
+            mid = m.get("id") if isinstance(m, dict) else None
+            if mid is None:
+                E.append((i, f"member entry {m!r} is not {{id: …}}"))
+                continue
+            ref = aliases.get(mid, mid)
+            if ref not in byid:
+                E.append((i, f"member {mid} not found"))
+                continue
+            if ref == i:
+                E.append((i, "lists itself as a member"))
+            elif ref in listed[i]:
+                E.append((i, f"member {ref} listed twice"))
+            listed[i].add(ref)
+            if m.get("priority") is not None and m["priority"] not in PRIORITY:
+                W.append((i, f"member {ref}: priority {m['priority']!r} not {'|'.join(PRIORITY)}"))
+            for t in tags:
+                if t not in map(str, byid[ref].get("tags") or []):
+                    W.append((ref, f"member of {i} without its tag {t}"))
+    for n in nodes:
+        for t in map(str, n.get("tags") or []):
+            if not t.startswith("sprint-"):
+                continue
+            s = owner_of.get(t)
+            if s is None:
+                W.append((n["id"], f"tag {t}: no sprint (a node with members:) carries it"))
+            elif s != n["id"] and n["id"] not in listed[s]:
+                W.append((n["id"], f"tag {t} but {s} does not list it"))
 
 
 def _check_problem(n, has_children, E, W):
@@ -155,6 +204,18 @@ def _check_problem(n, has_children, E, W):
         W.append((i, "todo set but resolution is not soft"))
     if s == "open" and not before and not has_children:
         W.append((i, "problem without before evidence or sub-problems: a candidate, not a row"))
+
+
+def _check_observation(n, byid, E):
+    """SPEC §4: an outstanding issue parked on purpose. It needs the figure that shows it; once promoted it names
+    the problem or task that took it on."""
+    i, s = n["id"], n.get("status")
+    if not n.get("before"):
+        E.append((i, "observation needs before evidence (the figure that shows it)"))
+    if s in ("promoted", "dismissed") and not n.get("closed"):
+        E.append((i, f"{s} without a closed date"))
+    if s == "promoted" and n.get("promoted_to") not in byid:
+        E.append((i, f"promoted needs promoted_to naming an existing node, has {n.get('promoted_to')!r}"))
 
 
 def pre_standard(n):
@@ -192,6 +253,8 @@ def rollup(byid, children):
                 else:
                     c["open"] += n.get("status") in UNRESOLVED
                 c["soft"] += n.get("resolution") == "soft"
+            elif n.get("type") == "observation":
+                c["noted"] += n.get("status") == "noted"   # shown, never counted as open work (label ignores it)
             else:
                 c["tasks"] += n.get("status") == "open"
             c.update(sub)
@@ -241,6 +304,8 @@ def print_tree(nodes):
         c = memo[i]
         if children.get(i):
             parts.append(("↓ " + label(c) + " " + " ".join(f"{k}:{v}" for k, v in c.items() if v)).rstrip())
+        if n.get("members"):
+            parts.append(f"⧉ members:{len(n['members'])}")
         return "  ".join(parts)
 
     def walk(i, prefix, last):

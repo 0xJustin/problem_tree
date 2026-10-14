@@ -13,12 +13,12 @@
   // the edge to the next lane departs — purely a layout anchor now, not a drawn box.
   const NODE_W = { problem: 236, task: 200 }, R = 5, DX = 300, DY = 24, PAD = 40;
   const st = { svg: null, g: null, edges: null, nodes: null, tree: null, opts: {}, view: { x: PAD, y: PAD, k: 1 },
-    collapsed: new Set(JSON.parse(store.ptCollapsed || '[]')), revealed: new Set(), pos: {}, anim: null, els: new Map(), eels: new Map(),
+    collapsed: new Set(JSON.parse(store.ptCollapsed || '[]')), revealed: new Set(), navRevealed: new Set(), pos: {}, anim: null, els: new Map(), eels: new Map(),
     offsets: {}, prefix: null, hoverChain: null };
   const loadOffsets = prefix => { st.prefix = prefix; try { st.offsets = JSON.parse(store['ptOffsets:' + prefix] || '{}'); } catch { st.offsets = {}; } };
   const saveOffsets = () => { store['ptOffsets:' + st.prefix] = JSON.stringify(st.offsets); };
   // complete = nothing left to do here: hard-verified or closed problems, done or dropped tasks (soft keeps its todo)
-  const isComplete = n => n.type === 'task' ? (n.status === 'done' || n.status === 'dropped') : (n.status === 'closed' || (n.status === 'verified' && n.resolution === 'hard'));
+  const isComplete = n => n.type === 'task' ? (n.status === 'done' || n.status === 'dropped') : n.type === 'observation' ? n.status !== 'noted' : (n.status === 'closed' || (n.status === 'verified' && n.resolution === 'hard'));
 
   const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
   const wrap = (s, width, maxLines = 2) => {
@@ -88,8 +88,9 @@
     const g = el('g', { class: 'gnode', 'data-id': n.id });
     el('rect', { class: 'catsw', x: -19, y: -3, width: 6, height: 6, rx: 1, style: 'display:none' }, g);
     if (n.type === 'task') el('rect', { class: 'shape', x: -5, y: -5, width: 10, height: 10, rx: 2 }, g);
+    else if (n.type === 'observation') el('polygon', { class: 'shape', points: '0,-6 6,0 0,6 -6,0' }, g);
     else el('circle', { class: 'shape', cx: 0, cy: 0, r: R }, g);
-    // id + title flow on one line via tspans, like a git-log row: "cbe-yrsu  Connectome body eval…"
+    // id + title flow on one line via tspans, like a git-log row: "xyz-a1b2  Some problem title…"
     const idChars = n.id.length + 2, totalChars = n.type === 'task' ? 38 : 44;
     const [titleLine = ''] = wrap(n.title, Math.max(10, totalChars - idChars), 1);
     const label = el('text', { x: 11, y: 4, class: 'glabel' }, g);
@@ -212,15 +213,22 @@
   }
   function subtree(id) { const N = st.tree.nodes, out = [id]; for (const c of N[id].children) out.push(...subtree(c)); return out; }
   function resetLayout() { st.offsets = {}; saveOffsets(); st.opts.onChange && st.opts.onChange(); }
-  function reveal(id) {  // show / hide this node's completed children
+  function reveal(id) {  // show / hide this node's completed children (a clicked reveal outlives the selection)
+    st.navRevealed.delete(id);
     st.revealed.has(id) ? st.revealed.delete(id) : st.revealed.add(id);
     st.opts.onChange && st.opts.onChange();
   }
   function expandTo(id) {  // make sure a node is visible: un-collapse its ancestors, reveal it if it is complete
     const N = st.tree && st.tree.nodes; if (!N || !N[id]) return false;
     let changed = false, cur = N[id].parent;
-    if (isComplete(N[id]) && cur && !st.revealed.has(cur)) { st.revealed.add(cur); changed = true; }
-    while (cur) { if (st.collapsed.delete(cur)) changed = true; if (isComplete(N[cur]) && N[cur].parent && !st.revealed.has(N[cur].parent)) { st.revealed.add(N[cur].parent); changed = true; } cur = N[cur].parent; }
+    // parents whose completed children must show for this node to be visible; reveals made for the previous
+    // selection that this one does not need are dropped, so those done siblings fold away again
+    const need = new Set();
+    if (isComplete(N[id]) && cur) need.add(cur);
+    for (let a = cur; a; a = N[a].parent) if (isComplete(N[a]) && N[a].parent) need.add(N[a].parent);
+    for (const r of st.navRevealed) if (!need.has(r)) { st.revealed.delete(r); st.navRevealed.delete(r); changed = true; }
+    for (const r of need) if (!st.revealed.has(r)) { st.revealed.add(r); st.navRevealed.add(r); changed = true; }
+    while (cur) { if (st.collapsed.delete(cur)) changed = true; cur = N[cur].parent; }
     if (changed) store.ptCollapsed = JSON.stringify([...st.collapsed]);
     return changed;
   }

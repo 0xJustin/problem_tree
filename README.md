@@ -12,10 +12,10 @@ uses that project as its worked example in places).
 
 ```
 validate.py DIR [--tree]      invariants + tree print with rollups; exit 1 on errors (PyYAML only)
-new.py DIR problem|task --parent ID --title "…" [--alias LEGACY-ID] [--discovered-from ID]
+new.py DIR problem|task|observation --parent ID --title "…" [--alias LEGACY-ID] [--discovered-from ID]
 new.py DIR problem --root --prefix xyz --title "…"
 new.py EXPDIR experiment --id NAME --title "…" [--kind ...] [--previous NAME]
-templates/problem.md, templates/task.md, templates/experiment.md
+templates/problem.md, task.md, observation.md, experiment.md
 serve.py, webui/, config.yaml   the cockpit (FastAPI, .venv)
 
 cluster            cockpit.sh [start|stop|restart|status|logs]       (no arg = foreground)

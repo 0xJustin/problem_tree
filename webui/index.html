@@ -105,6 +105,7 @@ body.story-mode{grid-template-columns:0 0 1fr!important}body.story-mode #side,bo
 .st-side h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;color:var(--strong)}.st-side h3 .n{color:var(--mute2);font-weight:500}.st-side h3 .x{margin-left:auto;cursor:pointer;color:var(--mute2);font-size:16px;line-height:1}.st-side h3 .x:hover{color:var(--fg)}
 .st-side .day{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute2);margin:12px 0 4px}
 .st-side .row{display:grid;grid-template-columns:12px 68px minmax(0,1fr);gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--soft-bg)}.st-side .row .t{font-size:12px;overflow-wrap:anywhere}.st-side .row .c{display:block;font-size:10.5px;color:var(--mute)}
+.st-side .log{margin:8px 0 4px;padding:6px 0 0 10px;border-left:2px solid var(--line2);font-size:12px}.st-side .log ul{margin:0;padding-left:14px}.st-side .log li{margin:0 0 5px;overflow-wrap:anywhere}.st-side .log .lh{display:flex;justify-content:flex-end}.st-side .log p{margin:0}.tl-log{fill:var(--mute)}.tl-bar.on .tl-log{fill:var(--acc)}
 .st-side .row.dropped{opacity:.45}.tl-pt{cursor:pointer}.tl-pt:hover .tl-label{fill:var(--strong)}.tl-pt.on .tl-label{fill:var(--strong);font-weight:600}
 .st-list{max-height:280px;overflow:auto;background:var(--panel);border-bottom:1px solid var(--line);padding:6px 0}
 .st-row{display:grid;grid-template-columns:96px 12px minmax(0,1fr);gap:10px;align-items:center;padding:6px 24px;cursor:pointer}.st-row:hover{background:var(--soft-bg)}.st-row.on{background:var(--acc-bg)}
@@ -137,14 +138,14 @@ tr.live-working{animation:pulse 2.2s ease-in-out infinite}@keyframes pulse{0%,10
 .dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--closed);display:inline-block}
 .dot.open{background:var(--open)}.dot.fix-proposed{background:var(--prop)}.dot.fix-landed{background:var(--land)}.dot.verified{background:var(--ver)}.dot.closed,.dot.done,.dot.dropped{background:var(--closed)}
 .evflag{display:inline-block;width:7px;height:7px;margin-right:3px;border:1.5px solid var(--mute2);border-radius:1px;vertical-align:middle}.evflag.on{background:var(--ver);border-color:var(--ver)}.evflag.pre{height:0;border-width:1.5px 0 0;border-color:var(--closed)}
-.dot.task{border-radius:2px;background:var(--task)}.dot.task.done,.dot.task.dropped{background:var(--closed)}.dot.soft{box-shadow:inset 0 0 0 2px var(--panel),0 0 0 1.5px var(--soft)}
+.dot.obs{border-radius:1px;background:transparent;box-shadow:inset 0 0 0 1.5px var(--prop);transform:rotate(45deg) scale(.82)}.dot.obs.promoted,.dot.obs.dismissed{box-shadow:inset 0 0 0 1.5px var(--closed)}.dot.task{border-radius:2px;background:var(--task)}.dot.task.done,.dot.task.dropped{background:var(--closed)}.dot.soft{box-shadow:inset 0 0 0 2px var(--panel),0 0 0 1.5px var(--soft)}
 .rl{font-size:10px;padding:0 6px;border-radius:8px;background:var(--soft-bg);color:var(--fg);white-space:nowrap}.rl.open{background:var(--open-bg);color:#96332c}.rl.soft{background:var(--ver-bg);color:#1f6b41}.rl.collapse{background:var(--acc-bg);color:var(--acc-ink)}.rl.clear{background:var(--ver-bg);color:#1f6b41}
 /* graph */
 .gnode{cursor:pointer}
 .gnode .shape{fill:var(--panel);stroke:var(--closed);stroke-width:1.5;transition:stroke-width .12s,stroke .12s}
 .gnode.open .shape{stroke:var(--open)}.gnode.fix-proposed .shape{stroke:var(--prop)}.gnode.fix-landed .shape{stroke:var(--land)}.gnode.verified .shape{stroke:var(--ver);fill:var(--ver-bg)}
 .gnode.closed .shape,.gnode.done .shape,.gnode.dropped .shape{stroke:var(--closed);fill:var(--soft-bg)}.gnode.task .shape{stroke:var(--task)}.gnode.task.done .shape,.gnode.task.dropped .shape{stroke:var(--closed)}
-.gnode.res-soft .shape{stroke-dasharray:3 2}.gnode:hover .shape{stroke-width:2.5}.gnode.sel .shape{stroke-width:2.5;filter:drop-shadow(0 0 0 2px var(--acc-ring))}
+.gnode.observation .shape{stroke:var(--prop);fill:var(--panel)}.gnode.observation.promoted .shape,.gnode.observation.dismissed .shape{stroke:var(--closed);fill:var(--soft-bg)}.gnode.res-soft .shape{stroke-dasharray:3 2}.gnode:hover .shape{stroke-width:2.5}.gnode.sel .shape{stroke-width:2.5;filter:drop-shadow(0 0 0 2px var(--acc-ring))}
 .gnode.lineage .shape{stroke:var(--acc);stroke-width:2.5}
 .gnode.dim{opacity:.22}.gnode.moving{cursor:grabbing}.gnode text{font:11.5px "IBM Plex Sans",system-ui,sans-serif;fill:var(--fg);pointer-events:none;user-select:none}
 .gnode .glabel{dominant-baseline:middle}
@@ -165,6 +166,7 @@ tr.live-working{animation:pulse 2.2s ease-in-out infinite}@keyframes pulse{0%,10
 .xgrid{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;padding:6px 8px 10px;border-left:2px solid var(--line);margin:0 0 6px 6px}.thumb.ex{padding:4px}.thumb.ex .cap{font-size:10.5px}
 .cmp{display:grid;gap:8px;align-items:start}.cmp .rh{font:11px "IBM Plex Mono",Menlo,monospace;color:var(--mute);align-self:center}.cmp .ch{font-size:11.5px;font-weight:600;text-align:center;color:var(--strong)}
 .pin{cursor:pointer;color:var(--mute2);font-size:11px}.pin:hover,.pin.on{color:var(--acc)}
+.vg .rh.diff{color:var(--strong);font-weight:600;border-left:3px solid var(--prop);padding-left:6px}.vcell{position:relative;height:26px;border-radius:5px;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font:11px "IBM Plex Mono",Menlo,monospace;color:var(--strong);cursor:pointer;background:var(--closed)}.vcell.PASS{background:color-mix(in srgb,var(--ver) 28%,transparent);border-color:var(--ver)}.vcell.FAIL{background:color-mix(in srgb,var(--open) 28%,transparent);border-color:var(--open)}.vcell.FAIL.soft{background-image:repeating-linear-gradient(45deg,transparent 0 4px,rgba(255,255,255,.35) 4px 6px)}.vcell.MIXED{background:color-mix(in srgb,var(--prop) 30%,transparent);border-color:var(--prop)}.vcell.INCONCLUSIVE{background:transparent;border-style:dashed}.vcell.none{background:transparent;border-style:dotted;cursor:default;opacity:.5}.vcell .rel{top:1px;left:1px}
 .cmpcell{position:relative}.rel{position:absolute;top:4px;left:4px;font-size:10.5px;padding:0 5px;border-radius:8px;background:var(--panel);border:1px solid var(--line2);line-height:1.6}.rel.up{color:var(--ver);border-color:var(--ver)}.rel.dn{color:var(--open);border-color:var(--open)}.rel.eq{color:var(--mute)}
 .wipe{position:relative;border:1px solid var(--line);border-radius:var(--radius);padding:6px;background:var(--panel)}.wipe .wbase,.wipe .wover{width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;border-radius:var(--radius-sm);display:block}.wipe .wover{position:absolute;top:6px;left:6px;right:6px;clip-path:inset(0 calc(100% - var(--wipe)) 0 0)}
 .wipe .wdiv{position:absolute;top:6px;bottom:calc(6px + 20px);left:calc(6px + (100% - 12px) * var(--wipe) / 100%);width:2px;background:var(--acc);box-shadow:0 0 0 1px rgba(255,255,255,.6);pointer-events:none}
@@ -199,7 +201,7 @@ tr.live-working{animation:pulse 2.2s ease-in-out infinite}@keyframes pulse{0%,10
   </div>
   <svg id="graph"></svg>
   <div class="tree" id="tree" style="display:none"></div>
-  <div id="legend"><span class="dot open"></span>open <span class="dot fix-proposed"></span>fix-proposed <span class="dot fix-landed"></span>fix-landed <span class="dot verified"></span>verified <span class="dot verified soft" title="soft: ok for now, todo left"></span>soft <span class="dot task"></span>task</div>
+  <div id="legend"><span class="dot open"></span>open <span class="dot fix-proposed"></span>fix-proposed <span class="dot fix-landed"></span>fix-landed <span class="dot verified"></span>verified <span class="dot verified soft" title="soft: ok for now, todo left"></span>soft <span class="dot task"></span>task <span class="dot obs" title="observation: outstanding, parked on purpose"></span>observation</div>
   <div id="catLegend"></div>
 </div>
 <div id="split"></div>
@@ -260,7 +262,7 @@ async function loadTree() {
   v.title = [...S.tree.errors.map(e => 'ERROR ' + e.join(': ')), ...S.tree.warnings.map(w => 'WARN ' + w.join(': '))].join('\n') || 'validate.py: no errors, no warnings';
   renderTree();
 }
-function dot(n) { return `<span class="dot ${n.type === 'task' ? 'task ' : ''}${n.status}${n.resolution === 'soft' ? ' soft' : ''}" title="${n.type} · ${n.status}${n.resolution ? ' · ' + n.resolution : ''}"></span>`; }
+function dot(n) { return `<span class="dot ${n.type === 'task' ? 'task ' : n.type === 'observation' ? 'obs ' : ''}${n.status}${n.resolution === 'soft' ? ' soft' : ''}" title="${n.type} · ${n.status}${n.resolution ? ' · ' + n.resolution : ''}"></span>`; }
 function badge(n) { if (!n.label) return ''; const c = n.rollup, parts = ['open', 'soft', 'collapse', 'tasks'].filter(k => c[k]).map(k => `${k}:${c[k]}`); return `<span class="rl ${n.label}" title="rollup over descendants">${n.label}${parts.length ? ' ' + parts.join(' ') : ''}</span>`; }
 function renderTree(fit) {
   if (!S.tree) return;
@@ -414,6 +416,7 @@ async function viewNode(id, nav) {
   const isP = n.type === 'problem';
   let h = nodeHeader(n, d.parents, `${d.discovered_from ? `<span class="pill">discovered from <a href="#/node/${d.discovered_from.id}">${esc(d.discovered_from.id)}</a></span>` : ''}
     ${(d.stories || []).map(s => `<a class="pill" href="#/story/${encodeURIComponent(s.slug)}" title="${esc(s.title)}" style="border-color:${Timeline.color(s.kind)};color:${Timeline.color(s.kind)}">◆ story</a>`).join('')}
+    ${(d.in_sprints || []).map(s => `<a class="pill" href="#/node/${s.id}" title="${esc(s.title)} · rank ${s.rank}">⚑ ${esc(s.priority || s.id)}</a>`).join('')}
     <span class="sp"></span><span class="acts">${d.brief ? `<button onclick="location.hash='#/note/${encodeURIComponent(d.brief)}'" title="${esc(d.brief)}">brief</button>` : ''}<button onclick="copyText('${n.id}')" title="copy id">id</button><button onclick="copyText('[[${n.id}]]')" title="copy wikilink">[[…]]</button><button onclick='copyText(${JSON.stringify(d.path_remote || n.path)})' title="copy path ${esc(d.path_remote || n.path)}">path</button></span>`);
   if (isP) h += `<div class="box"><h3>instrument</h3>${n.instrument ? esc(n.instrument) : '<span class="missing">not set</span>'}</div>`;
   if (isP) h += `<div class="ev"><div><h3 class="mute small" style="text-transform:uppercase;letter-spacing:.6px">before · ${d.before.length}</h3>${d.before.map(e => evCard(e, n.id)).join('') || empty('no before-evidence')}</div>
@@ -421,6 +424,7 @@ async function viewNode(id, nav) {
   else if (d.artifact) h += `<div class="ev one">${evCard(d.artifact, n.id)}</div>`;
   if (d.fix.length || n.todo) h += `<div class="box"><h3>fix</h3><ul style="margin:0;padding-left:18px">${d.fix.map(fixItem).join('')}</ul>${n.todo ? `<div style="margin-top:6px"><span class="mute small">todo</span> ${esc(n.todo)}</div>` : ''}</div>`;
   h += `<div class="body">${d.body_html}</div>`;
+  if (d.members && d.members.length) h += `<div class="box kids"><h3>members <span class="n">${d.members.length}</span></h3>${d.members.map(m => `<div class="row" title="${m.under ? esc(m.under.id + ' · ' + m.under.title) : ''}">${dot(m)}<span class="pill mute" style="font-size:11px">${esc(m.priority || '·')}</span><a href="#/node/${m.id}" class="mono small">${m.id}</a><span>${esc(m.title)}</span>${m.owner ? `<span class="mute small">${esc(m.owner)}</span>` : ''}${badge(m)}</div>`).join('')}</div>`;
   if (d.children.length || d.discovered.length) h += `<div class="box kids"><h3>children <span class="n">${d.children.length}</span></h3>${d.children.map(c => `<div class="row">${dot(c)}<a href="#/node/${c.id}" class="mono small">${c.id}</a><span>${esc(c.title)}</span>${badge(c)}</div>`).join('')}
     ${d.discovered.length ? `<h3 style="margin-top:8px">discovered here</h3>${d.discovered.map(c => `<div class="row"><a href="#/node/${c.id}" class="mono small">${c.id}</a><span>${esc(c.title)}</span></div>`).join('')}` : ''}</div>`;
   if (d.experiments && d.experiments.length) h += `<div class="box"><h3>runs <span class="n">${d.experiments.length}</span></h3>${d.experiments.map(e => `<div class="kids"><div class="row"><span class="pill st ${e.status}" style="font-size:11px">${e.status}</span><a href="#/run/${e.id}" class="mono small">${e.id}</a><span class="mute small">${e.kind || ''} · ${day(e.launched)}</span><span class="small">${e.roles.map(r => `<span class="pill" style="font-size:11px">${r}</span>`).join(' ')}</span><span class="small mute">${esc(e.title || '').slice(0, 90)}</span></div></div>`).join('')}</div>`;
@@ -464,11 +468,13 @@ async function viewStory(slug, nav) {
   }
   $('#stDetail').innerHTML = sel ? storyDetail(sel, P) : empty('no story points yet');
   $('#stSide').style.display = S.storyClosed ? '' : 'none';
-  if (S.storyClosed) $('#stSide').innerHTML = closedSide(S.storyClosed[0], S.storyClosed[1] || S.storyClosed[0]);
+  if (S.storyClosed) { $('#stSide').innerHTML = closedSide(S.storyClosed[0], S.storyClosed[1] || S.storyClosed[0]); fillCloseouts(); }
 }
 function closedSide(from, to) {  // nodes whose closed: date falls in [from, to]; dropped last, dimmed
   const N = Object.values(S.tree?.nodes || {}).filter(n => n.closed && String(n.closed).slice(0, 10) >= from && String(n.closed).slice(0, 10) <= to);
-  const days = [...new Set(N.map(n => String(n.closed).slice(0, 10)))].sort();
+  const logs = (S.story?.closeouts || []).filter(d => d >= from && d <= to);
+  const days = [...new Set([...N.map(n => String(n.closed).slice(0, 10)), ...logs])].sort();
+  const log = dd => logs.includes(dd) ? `<div class="log" data-log="${dd}"></div>` : '';
   const row = n => { const c = catColor(n.category);
     return `<div class="row${n.status === 'dropped' ? ' dropped' : ''}">${dot(n)}<a class="mono small" href="#/node/${n.id}">${n.id}</a>
       <span class="t">${esc(n.title)}${n.category ? `<span class="c" style="${c ? `color:${c}` : ''}">${esc(n.category)}</span>` : ''}</span></div>`; };
@@ -476,7 +482,13 @@ function closedSide(from, to) {  // nodes whose closed: date falls in [from, to]
   const title = from === to ? new Date(from + 'T00:00:00Z').toLocaleDateString('en', {month: 'long', day: 'numeric', timeZone: 'UTC'})
     : `${new Date(from + 'T00:00:00Z').toLocaleDateString('en', {month: 'short', day: 'numeric', timeZone: 'UTC'})} – ${new Date(to + 'T00:00:00Z').toLocaleDateString('en', {month: 'short', day: 'numeric', timeZone: 'UTC'})}`;
   return `<h3>${title} <span class="n">${N.length} closed</span><span class="x" onclick="S.storyClosed = null; history.replaceState(null, '', '#/story/' + encodeURIComponent(S.storySel || '')); viewStory(S.storySel, S.nav)" title="close">×</span></h3>`
-    + (days.length > 1 ? days.map(dd => `<div class="day">${new Date(dd + 'T00:00:00Z').toLocaleDateString('en', {weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'})}</div>` + group(N.filter(n => String(n.closed).slice(0, 10) === dd))).join('') : group(N));
+    + (days.length > 1 ? days.map(dd => `<div class="day">${new Date(dd + 'T00:00:00Z').toLocaleDateString('en', {weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'})}</div>` + group(N.filter(n => String(n.closed).slice(0, 10) === dd)) + log(dd)).join('') : group(N) + (days[0] ? log(days[0]) : ''));
+}
+async function fillCloseouts() {  // the day's Agent Work Log, under that day's closed nodes
+  for (const el of document.querySelectorAll('#stSide .log[data-log]')) {
+    const c = await api('/api/closeout/' + el.dataset.log).catch(() => null);
+    if (c) el.innerHTML = `<div class="lh"><span class="acts"><button onclick="location.hash='#/note/${encodeURIComponent(c.path)}'" title="${esc(c.path)}">note</button></span></div>${c.html}`;
+  }
 }
 function storyDetail(p, P) {
   const title = s => (P.find(q => q.slug === s) || {}).title || s;
@@ -536,7 +548,7 @@ function planForm(rows) {
     catch (e) { $('#pf-res').innerHTML = `<span class="missing">${esc(e.message)}</span>`; }
   };
 }
-const G = {gallery: [], arms: [], tiers: [], arm: 'all', stage: 'all', verdict: 'all', tier: 'all', q: '', compare: false, cmpStage: null, id: null, open: new Set(), baseline: null, unified: false, wipe: 50};
+const G = {gallery: [], arms: [], cards: {}, grid: false, gridStage: null, gridDiff: false, tiers: [], arm: 'all', stage: 'all', verdict: 'all', tier: 'all', q: '', id: null, open: new Set(), baseline: null, unified: false, wipe: 50};
 function vb(f) {  // verdict as a coloured mark; the words live in the tooltip
   if (!f.verdict) return '';
   const val = f.value !== undefined && f.value !== null ? ` = ${typeof f.value === 'number' ? +f.value.toPrecision(4) : f.value}` : '';
@@ -558,13 +570,37 @@ function relBadge(base, cur) {  // cur vs. the pinned baseline arm: numeric delt
   return '';
 }
 function thumb(f, showArm, ex) {
-  const name = ex ? (f.instance || f.card) : `${showArm ? f.arm + ' · ' : ''}${f.stage !== 'run' ? f.stage + ' · ' : ''}${f.card}${f.instance ? ' [' + f.instance + ']' : ''}`;
+  const st = f.step ? ` @${Math.round(f.step / 1e6)} M` : '';  // env-step suffix of the file name (video/leg_load_<step>.png)
+  const name = ex ? (f.instance || f.card) + st : `${showArm ? f.arm + ' · ' : ''}${f.stage !== 'run' ? f.stage + ' · ' : ''}${f.card}${f.instance ? ' [' + f.instance + ']' : ''}${st}`;
   const media = f.video
     ? `<video loading="lazy" src="${f.url}" controls muted loop preload="metadata" title="${esc(f.arm + ' / ' + f.file)}"></video>`
     : `<img loading="lazy" src="${f.url}" alt="${esc(f.card)}" title="${esc(f.arm + ' / ' + f.file)}">`;
   const copyBtn = f.video ? '' : `<button onclick="copyImage('${f.url}')" title="copy image">image</button>`;
   return `<div class="thumb${ex ? ' ex' : ''}">${media}<div class="cap">${vb(f)}<span class="nm" title="${esc(f.instance || f.card)}">${esc(name)}</span></div>
     <div class="acts">${copyBtn}<button onclick="copyText('![[${esc(f.vault)}]]')" title="copy ![[vault path]]">![[…]]</button><a href="${f.url}" target="_blank"><button>open</button></a></div></div>`;
+}
+function drawVerdictGrid(arms, q) {  // card x arm verdict tiles at one stage (G.cards from the server)
+  const stages = Object.keys(G.cards), stage = stages.includes(G.gridStage) ? G.gridStage : (stages.includes('final') ? 'final' : stages[0]);
+  const tierName = tn => tn === 99 ? 'other' : ((G.tiers.find(x => x.tier === tn) || {}).name || String(tn));
+  const tierQ = tn => tn === 99 ? '' : ((G.tiers.find(x => x.tier === tn) || {}).question || '');
+  const differs = r => new Set(arms.map(a => (r.cells[a] || {}).verdict || '—')).size > 1;
+  const rows = G.cards[stage].filter(r => (!q || r.card.toLowerCase().includes(q)) && (!G.gridDiff || differs(r)));
+  let h = `<div class="gctl">${stages.map(s => `<span class="chip ${s === stage ? 'on' : ''}" data-g="gridStage" data-v="${esc(s)}">${esc(s)}</span>`).join('')}<span class="mute">·</span><span class="chip ${G.gridDiff ? 'on' : ''}" data-g="gridDiff" data-v="${G.gridDiff ? '' : '1'}" title="only cards whose verdict differs across arms">≠</span></div>`;
+  if (!rows.length) return h + empty('no cards match');
+  const tiers = [...new Set(rows.map(r => r.tier || 99))].sort((a, b) => a - b);
+  for (const tn of tiers) {
+    h += `<h4 class="tierh"><span class="tn">${tn === 99 ? '·' : tn}</span>${esc(tierName(tn))}<span class="tq">${esc(tierQ(tn))}</span></h4><div class="cmp vg" style="grid-template-columns:minmax(150px,1fr) repeat(${arms.length},90px)"><div></div>${arms.map(a => `<div class="ch">${esc(a)} <span class="pin${a === G.baseline ? ' on' : ''}" data-pin="${esc(a)}">⚑</span></div>`).join('')}`;
+    for (const r of rows.filter(r => (r.tier || 99) === tn)) {
+      h += `<div class="rh${differs(r) ? ' diff' : ''}" title="${esc(r.card)}">${esc(r.card)}</div>` + arms.map(a => {
+        const c = r.cells[a];
+        if (!c) return `<div class="vcell none" title="${esc(a)}: not run"></div>`;
+        const f = {...c, arm: a}, txt = c.n > 1 ? `${c.n_pass}/${c.n}` : (typeof c.value === 'number' ? +c.value.toPrecision(3) : '');
+        return `<div class="vcell ${c.verdict}${c.soft && c.verdict === 'FAIL' ? ' soft' : ''}" data-card="${esc(r.card)}" data-arm="${esc(a)}" data-stage="${esc(stage)}" title="${esc(a)} · ${c.verdict}${c.n > 1 ? ` ${c.n_pass}/${c.n}` : ''}${c.value != null && c.n === 1 ? ' = ' + esc(String(c.value)) : ''}${c.names.length > 1 ? '\n' + esc(c.names.join('\n')) : ''}${c.traceback ? '\n\n' + esc(c.traceback) : ''}">${esc(String(txt))}${G.baseline && a !== G.baseline ? relBadge(r.cells[G.baseline] && {...r.cells[G.baseline], arm: G.baseline}, f) : ''}</div>`;
+      }).join('');
+    }
+    h += '</div>';
+  }
+  return h;
 }
 function drawGallery() {
   const el = $('#gal'); if (!el) return;
@@ -577,7 +613,7 @@ function drawGallery() {
   const sel = all.filter(keep);
   const chips = (name, list, cur, label = v => v) => `<span class="chip ${cur === 'all' ? 'on' : ''}" data-g="${name}" data-v="all">all</span>` + list.map(v => `<span class="chip ${String(cur) === String(v) ? 'on' : ''}" data-g="${name}" data-v="${esc(v)}">${esc(label(v))}</span>`).join('');
   let h = `<div class="gctl">${tiers.length > 1 ? chips('tier', tiers, G.tier, tn => tn === 99 ? '·' : tn) + '<span class="mute">·</span>' : ''}${arms.length > 1 ? chips('arm', arms, G.arm) + '<span class="mute">·</span>' : ''}${chips('stage', stages, G.stage)}${verdicts.length ? '<span class="mute">·</span>' + chips('verdict', verdicts, G.verdict) : ''}
-    <input type="text" id="gq" placeholder="card…" value="${esc(G.q)}" size="14">${arms.length > 1 ? `<label><input type="checkbox" id="gcmp" ${G.compare ? 'checked' : ''}> compare arms</label>` : ''}${G.compare && arms.length === 2 ? `<label><input type="checkbox" id="gunif" ${G.unified ? 'checked' : ''}> unified</label>` : ''}<span class="mute small">${sel.length}</span></div>`;
+    <input type="text" id="gq" placeholder="card…" value="${esc(G.q)}" size="14">${arms.length > 1 && Object.keys(G.cards).length ? `<label><input type="checkbox" id="ggrid" ${G.grid ? 'checked' : ''}> verdicts</label>` : ''}${!G.grid && G.arm === 'all' && arms.length === 2 ? `<label><input type="checkbox" id="gunif" ${G.unified ? 'checked' : ''}> unified</label>` : ''}<span class="mute small">${sel.length}</span></div>`;
   // group: tier -> aggregate (stage|card|arm) -> [examples]
   const groups = new Map();
   for (const f of sel) {
@@ -585,35 +621,58 @@ function drawGallery() {
     // aggregates are keyed by (arm, stage, card, instance); an example attaches to the aggregate whose
     // instance is its prefix before "__" (DNg100__T1_L -> DNg100), else to the instance-less aggregate
     const g = groups.get(tierOf(f)), base = `${f.arm}|${f.stage}|${f.card}|`;
-    if (!f.example) { const key = base + (f.instance || ''); if (!g.has(key)) g.set(key, {agg: null, examples: [], order: f.order}); g.get(key).agg = f; }
+    if (!f.example) {  // the same plot at several checkpoint steps: the latest shows, older ones fold under it
+      const key = base + (f.instance || ''); if (!g.has(key)) g.set(key, {agg: null, examples: [], order: f.order});
+      const grp = g.get(key);
+      if (grp.agg && (grp.agg.step || 0) > (f.step || 0)) grp.examples.push(f);
+      else { if (grp.agg) grp.examples.push(grp.agg); grp.agg = f; grp.order = f.order; }
+    }
     else { const pref = (f.instance || '').split(/__|\//)[0]; const key = g.has(base + pref) ? base + pref : base; if (!g.has(key)) g.set(key, {agg: null, examples: [], order: f.order}); g.get(key).examples.push(f); }
   }
   const tierHead = tn => `<h4 class="tierh"><span class="tn">${tn === 99 ? '·' : tn}</span>${esc(tierName(tn))}<span class="tq">${esc(tierQ(tn))}</span></h4>`;
   const topSel = top.filter(f => !q || f.card.toLowerCase().includes(q));
   const topBlock = topSel.length ? `<h4 class="tierh"><span class="tn">∑</span>across arms</h4><div class="gal">${topSel.map(f => thumb(f, false)).join('')}</div>` : '';
-  if (G.compare && arms.length > 1) {
-    const stage = G.cmpStage && stages.includes(G.cmpStage) ? G.cmpStage : (stages.includes('final') ? 'final' : stages[0]);
+  if (G.grid && G.cards && Object.keys(G.cards).length) {
+    h += topBlock + drawVerdictGrid(arms, q);
+  } else if (G.arm === 'all' && arms.length > 1) {
+    // one row per plot (stage, card, instance) and one column per arm, so a plot's versions sit side by side
     const unified = G.unified && arms.length === 2;
-    h += topBlock + `<div class="gctl">${stages.map(s => `<span class="chip ${s === stage ? 'on' : ''}" data-g="cmpStage" data-v="${esc(s)}">${esc(s)}</span>`).join('')}${unified ? `<span class="mute">·</span><input type="range" id="wipeR" min="0" max="100" value="${G.wipe}" title="${esc(arms[0])} ↔ ${esc(arms[1])}">` : ''}</div>`;
+    const rowOrder = o => [...o.slice(0, 3), 0, ...o.slice(4)];  // a row spans checkpoint steps
+    h += topBlock + (unified ? `<div class="gctl"><input type="range" id="wipeR" min="0" max="100" value="${G.wipe}" title="${esc(arms[0])} ↔ ${esc(arms[1])}"></div>` : '');
     for (const tn of [...groups.keys()].sort((a, b) => a - b)) {
-      const cards = new Map();
-      for (const [key, grp] of groups.get(tn)) { const f = grp.agg; if (f && f.stage === stage) { if (!cards.has(f.card)) cards.set(f.card, {order: f.order, cells: {}}); cards.get(f.card).cells[f.arm] = f; } }
-      if (!cards.size) continue;
+      const rows = new Map();
+      for (const [key, grp] of groups.get(tn)) {
+        const f = grp.agg || grp.examples[0], inst = grp.agg ? f.instance || '' : '';
+        const rk = `${f.stage}|${f.card}|${inst}`;
+        if (!rows.has(rk)) rows.set(rk, {order: rowOrder(f.order), label: `${f.stage !== 'run' ? f.stage + ' · ' : ''}${f.card}${inst ? ' [' + inst + ']' : ''}`, cells: {}});
+        rows.get(rk).cells[f.arm] = [key, grp];
+      }
+      const sorted = [...rows.values()].sort((a, b) => cmpOrder(a.order, b.order));
       if (unified) {
         h += tierHead(tn) + '<div class="gal">';
-        for (const [card, c] of [...cards].sort((a, b) => cmpOrder(a[1].order, b[1].order))) {
-          const a0 = c.cells[arms[0]], a1 = c.cells[arms[1]];
+        for (const r of sorted) {
+          const a0 = (r.cells[arms[0]] || [])[1]?.agg, a1 = (r.cells[arms[1]] || [])[1]?.agg;
           h += (a0 && a1 && !a0.video && !a1.video)
-            ? `<div class="wipe" style="--wipe:${G.wipe}%"><img src="${a0.url}" class="wbase" alt=""><img src="${a1.url}" class="wover" alt=""><div class="wdiv"></div><div class="cap"><span class="nm" title="${esc(card)}">${esc(card)}</span></div></div>`
-            : thumb(a1 || a0, true);
+            ? `<div class="wipe" style="--wipe:${G.wipe}%"><img src="${a0.url}" class="wbase" alt=""><img src="${a1.url}" class="wover" alt=""><div class="wdiv"></div><div class="cap"><span class="nm" title="${esc(r.label)}">${esc(r.label)}</span></div></div>`
+            : (a1 || a0 ? thumb(a1 || a0, true) : '');
         }
         h += '</div>';
         continue;
       }
-      h += tierHead(tn) + `<div class="cmp" style="grid-template-columns:150px repeat(${arms.length},1fr)"><div></div>${arms.map(a => `<div class="ch">${esc(a)} <span class="pin${a === G.baseline ? ' on' : ''}" data-pin="${esc(a)}" title="${a === G.baseline ? 'baseline' : 'set as baseline'}">${a === G.baseline ? '◆' : '◇'}</span></div>`).join('')}`;
-      for (const [card, c] of [...cards].sort((a, b) => cmpOrder(a[1].order, b[1].order))) h += `<div class="rh">${esc(card)}</div>` + arms.map(a => c.cells[a] ? `<div class="cmpcell">${thumb(c.cells[a], false)}${G.baseline && a !== G.baseline ? relBadge(c.cells[G.baseline], c.cells[a]) : ''}</div>` : '<div class="mute small" style="padding:10px">—</div>').join('');
+      h += tierHead(tn) + `<div class="cmp" style="grid-template-columns:150px repeat(${arms.length},minmax(0,1fr))"><div></div>${arms.map(a => `<div class="ch">${esc(a)} <span class="pin${a === G.baseline ? ' on' : ''}" data-pin="${esc(a)}" title="${a === G.baseline ? 'baseline' : 'set as baseline'}">${a === G.baseline ? '◆' : '◇'}</span></div>`).join('')}`;
+      for (const r of sorted) {
+        const base = G.baseline && r.cells[G.baseline] ? r.cells[G.baseline][1].agg : null;
+        h += `<div class="rh">${esc(r.label)}</div>` + arms.map(a => {
+          if (!r.cells[a]) return '<div class="mute small" style="padding:10px">—</div>';
+          const [key, grp] = r.cells[a], f = grp.agg || grp.examples[0], rest = grp.agg ? grp.examples : grp.examples.slice(1), open = G.open.has(key);
+          return `<div class="cmpcell cell${rest.length ? ' hasx' : ''}">${thumb(f, false)}${base && a !== G.baseline && grp.agg ? relBadge(base, grp.agg) : ''}`
+            + (rest.length ? `<span class="xp ${open ? 'on' : ''}" data-x="${esc(key)}" title="${rest.length} more">${open ? '▾' : '▸'} ${rest.length}</span>` : '')
+            + (rest.length && open ? `<div class="xgrid">${rest.sort((x, y) => cmpOrder(x.order, y.order)).map(x => thumb(x, false, true)).join('')}</div>` : '') + '</div>';
+        }).join('');
+      }
       h += '</div>';
     }
+    if (!sel.length && !topSel.length) h += empty('no figures match');
   } else {
     h += topBlock;
     for (const tn of [...groups.keys()].sort((a, b) => a - b)) {
@@ -634,7 +693,8 @@ function drawGallery() {
   el.querySelectorAll('.xp').forEach(x => x.onclick = () => { G.open.has(x.dataset.x) ? G.open.delete(x.dataset.x) : G.open.add(x.dataset.x); drawGallery(); });
   el.querySelectorAll('.pin').forEach(p => p.onclick = () => { G.baseline = G.baseline === p.dataset.pin ? null : p.dataset.pin; drawGallery(); });
   const gq = $('#gq'); if (gq) { gq.oninput = () => { G.q = gq.value; drawGallery(); }; }
-  const gc = $('#gcmp'); if (gc) gc.onchange = () => { G.compare = gc.checked; drawGallery(); };
+  const gg = $('#ggrid'); if (gg) gg.onchange = () => { G.grid = gg.checked; drawGallery(); };
+  el.querySelectorAll('.vcell[data-card]').forEach(c => c.onclick = () => { G.grid = false; G.arm = c.dataset.arm; G.stage = c.dataset.stage; G.q = c.dataset.card; drawGallery(); });
   const gu = $('#gunif'); if (gu) gu.onchange = () => { G.unified = gu.checked; drawGallery(); };
   const wr = $('#wipeR'); if (wr) wr.oninput = () => { G.wipe = +wr.value; document.querySelectorAll('.wipe').forEach(w => w.style.setProperty('--wipe', G.wipe + '%')); };
 }
@@ -696,7 +756,7 @@ async function viewRun(id, nav) {
   if (local) $('#main').innerHTML = runHeader(local) + '<div class="skel"></div>';
   const d = await api('/api/experiment/' + id), e = d.experiment;
   if (!current(nav)) return;
-  G.gallery = d.gallery; G.arms = d.arms; G.tiers = d.tiers || []; G.id = e.id; G.arm = 'all'; G.stage = 'all'; G.verdict = 'all'; G.tier = 'all'; G.q = ''; G.open = new Set(); G.baseline = null; G.unified = false;
+  G.gallery = d.gallery; G.cards = d.cards || {}; G.grid = false; G.gridStage = null; G.gridDiff = false; G.arms = d.arms; G.tiers = d.tiers || []; G.id = e.id; G.arm = 'all'; G.stage = 'all'; G.verdict = 'all'; G.tier = 'all'; G.q = ''; G.open = new Set(); G.baseline = null; G.unified = false;
   const link = x => `<a href="#/run/${x.id}" class="mono" title="${esc(x.title || '')}">${x.id}</a>`;
   let h = runHeader(e, `${e.experiment_dir ? `<span class="pill mono">${d.repo_url ? `<a href="${d.repo_url}" target="_blank">${esc(e.experiment_dir)}</a>` : esc(e.experiment_dir)}</span>` : ''}${e.outbox ? `<span class="pill mono">outbox ${esc(e.outbox)}</span>` : ''}${(e.jobs || []).map(j => `<span class="pill mono">job ${j}</span>`).join('')}
     <span class="sp"></span><span class="acts"><button onclick="copyText('${e.id}')" title="copy id">id</button><button onclick="copyText('[[${e.id}]]')" title="copy wikilink">[[…]]</button><button onclick='copyText(${JSON.stringify(d.path_remote)})' title="copy path">path</button></span>`);
@@ -704,10 +764,10 @@ async function viewRun(id, nav) {
   h += `<div class="box"><h3>lineage</h3><div class="lineage">${d.previous.length ? d.previous.map(p => p.exists ? link(p) : `<span class="missing mono">${esc(p.id)}</span>`).join(', ') : '<span class="mute">(first)</span>'}<span class="arrow">→</span><b class="mono">${e.id}</b><span class="arrow">→</span>${d.next.length ? d.next.map(link).join(', ') : '<span class="mute">(latest)</span>'}</div></div>`;
   h += `<div class="body">${d.body_html}</div>`;
   if (d.nodes.length) h += `<div class="box kids"><h3>tree nodes <span class="n">${d.nodes.length}</span></h3>${d.nodes.map(n => `<div class="row">${dot(n)}<a href="#/node/${n.id}" class="mono small">${n.id}</a><span class="pill" style="font-size:11px">${esc(n.role || 'linked')}</span><span>${esc(n.title)}</span></div>`).join('')}</div>`;
-  if (d.arms.length) h += `<div class="box"><h3>arms <span class="n">${d.arms.length}</span></h3><table class="g"><tr><th>arm</th><th>run id</th><th>job</th><th>figures</th><th>synaptix</th><th>drosophilax</th><th>cbe</th><th>bundle</th><th>stage notes</th></tr>
+  if (d.arms.length) { const libs = [...new Set(d.arms.flatMap(a => Object.keys(a.provenance || {})))]; h += `<div class="box"><h3>arms <span class="n">${d.arms.length}</span></h3><table class="g"><tr><th>arm</th><th>run id</th><th>job</th><th>figures</th>${libs.map(k => `<th>${esc(k)}</th>`).join('')}<th>bundle</th><th>stage notes</th></tr>
     ${d.arms.map(a => { const p = a.provenance || {}; const lib = k => p[k] ? `<span class="mono small" title="${esc(p[k].branch || '')}">${(p[k].commit || '').slice(0, 7)}${p[k].dirty ? '<span class="missing" title="dirty tree">*</span>' : ''}</span>` : '';
       const sn = d.stage_notes.filter(s => s.run_id === a.run_id).map(s => `<a href="#/note/${encodeURIComponent(s.note)}" title="${s.n_pass ?? ''} pass / ${s.n_fail ?? ''} fail">${esc(s.stage)}</a>`).join(' ');
-      return `<tr><td><b>${esc(a.name || 'main')}</b></td><td class="mono small">${esc(a.run_id || '')}</td><td class="mono small">${a.job || ''}</td><td>${a.media ? '✓' : '<span class="mute">none</span>'}</td><td>${lib('synaptix')}</td><td>${lib('drosophilax')}</td><td>${lib('connectome_body_eval')}</td><td class="mono small" title="${esc(a.bundle || '')}">${esc((a.bundle || '').split('/').pop().replace('.yaml', ''))}</td><td class="small">${sn}</td></tr>`; }).join('')}</table></div>`;
+      return `<tr><td><b>${esc(a.name || 'main')}</b></td><td class="mono small">${esc(a.run_id || '')}</td><td class="mono small">${a.job || ''}</td><td>${a.media ? '✓' : '<span class="mute">none</span>'}</td>${libs.map(k => `<td>${lib(k)}</td>`).join('')}<td class="mono small" title="${esc(a.bundle || '')}">${esc((a.bundle || '').split('/').pop().replace('.yaml', ''))}</td><td class="small">${sn}</td></tr>`; }).join('')}</table></div>`; }
   if (d.previous.some(p => p.exists) && d.arms.some(a => a.has_config)) {
     const armOpts = d.arms.map(a => `<option>${esc(a.name || 'main')}</option>`).join('');
     h += `<div class="box"><h3>config diff</h3><div class="gctl"><span class="mute">vs</span><select id="dvs">${d.previous.filter(p => p.exists).map(p => `<option>${esc(p.id)}</option>`).join('')}</select>${d.arms.length > 1 ? `<span class="mute">arm</span><select id="darm">${armOpts}</select>` : ''}</div><div id="diff"></div></div>`;

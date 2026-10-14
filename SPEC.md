@@ -2,8 +2,7 @@
 
 Status: draft, decisions 1–5 settled with the user 2026-09-21. Step 1 (schema, templates,
 validator) and step 2 (migration of P-01…P-14, five interior subsystem nodes, doc updates)
-done 2026-09-21; cockpit (§10) delivered 2026-09-21 as `~/brain/.claude/tools/problem-tree/serve.py` + `webui/index.html` (FastAPI, uv venv on Python 3.13, `cockpit.sh` launcher); Mac always-on install via `mac/install.sh` (launchd agent + Dock app, `path_map` for cluster-form paths). Graph view and experiments (§14) added 2026-09-21. Pre-migration copy:
-`agent_project_information/archive/2026-09-21_connectome_simulation_vault_pre-problem-tree.tar.gz`.
+done 2026-09-21; cockpit (§10) delivered 2026-09-21 as `serve.py` + `webui/index.html` (FastAPI, uv venv on Python 3.13, `cockpit.sh` launcher); Mac always-on install via `mac/install.sh` (launchd agent + Dock app, `path_map` for cluster-form paths). Graph view and experiments (§14) added 2026-09-21. Pre-migration copy:
 
 ## 1. Purpose
 
@@ -39,16 +38,16 @@ One tree per project, one `problems/` folder per project root, flat (the tree is
 frontmatter, not folders):
 
 ```
-~/brain/02-Projects/connectome_simulation/
+<vault>/02-Projects/my_project/
   problems/                      all nodes of the tree, one file per node, <id>.md
-    cbe-root.md                  the base problem; parent: null
-    cbe-k7q2.md                  a problem
-    cbe-3m0x.md                  a task
+    xyz-root.md                  the base problem; parent: null
+    xyz-k7q2.md                  a problem
+    xyz-3m0x.md                  a task
   media/problems/<id>/           evidence files (gitignored; volume is backed up)
-  connectome_body_eval/          aspect folders stay as they are (runs/, cards/, decisions/, notes/)
+  my_repo/          aspect folders stay as they are (runs/, cards/, decisions/, notes/)
 ```
 
-Evidence is referenced **relative to the note**: `../media/problems/cbe-k7q2/before.png`.
+Evidence is referenced **relative to the note**: `../media/problems/xyz-k7q2/before.png`.
 Never `![[absolute vault path]]`. Relative paths survive the Mac mount, the cluster path,
 git, Obsidian and any renderer. Evidence is a copy of the figure/data, not a symlink, and
 is treated as immutable once the row is `verified`. Large run outputs stay where the
@@ -56,7 +55,7 @@ exporter puts them (`<aspect>/media/`); only the specific before/after files are
 
 ## 4. Node types
 
-Two types, one file shape, one tree. Anything may be a child of anything.
+Three types, one file shape, one tree. Anything may be a child of anything.
 
 **`problem`** — the ledger-grade node (unchanged admission test: visible in a card / run
 outcome / measurement; fixed by a decision later runs inherit; before and after measured
@@ -71,15 +70,22 @@ PR mechanics, dead ends. No evidence requirement. Agents open tasks freely under
 they were working in. This is where the technical debris of a problem becomes visible
 again when you return to the node.
 
+**`observation`** (user, 2026-10-06) — an outstanding issue, seen and evidenced, deliberately parked
+because resolving it would take time out of proportion to the questions in front of it. Not a question to ask,
+not an item for this week: those are tasks, or a line in the reply. It is shown on the tree but never counted as
+open work, so it does not hold a parent open. It ends `promoted` (a problem or task took it on: `promoted_to`) or
+`dismissed` (no longer relevant; say why in the body). Whether an issue is out of proportion is the user's call:
+agents propose an observation in the reply and open it on the user's go-ahead.
+
 ## 5. Frontmatter
 
 Common to both types:
 
 ```yaml
-type: problem | task
-id: cbe-k7q2                # <prefix>-<4 base36 chars>; minted by new.py; filename == id
+type: problem | task | observation
+id: xyz-k7q2                # <prefix>-<4 base36 chars>; minted by new.py; filename == id
 title: "one sentence"
-parent: cbe-root            # id of the parent; null only on the root
+parent: xyz-root            # id of the parent; null only on the root
 aliases: []                 # previous ids (P-13); wikilinks and session greps resolve through these
 discovered_from: null       # id of the node whose work surfaced this one (beads semantics)
 status: …                   # per type, below
@@ -88,7 +94,8 @@ closed: null                # date; required for verified/closed/done/dropped
 sessions: []                # optional manual override, see §8: [{harness: pi|claude, ref: <path|uuid>}]
 source: agent | human
 domain: neuroscience
-tags: [cbe, problem|task]
+tags: [xyz, problem|task]
+members: []                # optional; makes the node a sprint (§19): [{id, priority: P1|P2|P3, owner}], rank order
 ```
 
 `problem` adds:
@@ -98,17 +105,17 @@ status: open | fix-proposed | fix-landed | verified | closed
 resolution: null | soft | hard     # soft = ok for now, todo left; hard = verified, nothing left
 instrument: "DNg100 card, 12 seeds, per-leg P(rhythmic)"   # the measurement both evidences use
 before:                            # evidence the problem exists; ≥1 for any status past open
-  - artifact: ../media/problems/cbe-k7q2/before_dng100_12seeds.png
+  - artifact: ../media/problems/xyz-k7q2/before_dng100_12seeds.png
     data: experiments/2026-09-21_symmetrize-phase0/before_dng100_12seeds.json   # repo-relative
-    repo: connectome_body_eval
+    repo: my_repo
     commit: 312d237
     branch: run-v4
     job: 154274084
     note: "nosym 0.52 ± 0.21; counts-only 0.56 ± 0.16"
 after: []                          # same shape; ≥1 required for verified
 fix:                               # lazy links, rendered as URLs by the cockpit
-  - pr: synaptix#181
-  - commit: synaptix@d8a91c1
+  - pr: my_lib#181
+  - commit: my_lib@d8a91c1
   - config: symmetrize.gate=reconstruction
 todo: ""                           # required when resolution: soft
 ```
@@ -124,8 +131,18 @@ artifact: null                     # legacy single relative path; counts as afte
 fix: []                            # optional, same shape as problem.fix
 ```
 
+`observation` adds:
+
+```yaml
+status: noted | promoted | dismissed
+before: [...]                      # required, ≥1: the figure that shows it; same entry shape as a problem's
+promoted_to: null                  # required when promoted: the problem or task that took it on
+revisit: ""                        # optional: the condition that would make it worth the time
+```
+
 Body sections (human-readable; the frontmatter is the machine index):
 problem — `## Problem`, `## Fix`, `## Evidence the fix worked (after)`, `## Follow-up`;
+observation — `## Observation` (what was seen, with its numbers), `## Why not now` (what resolving it would take);
 task — `## What`, `## Summary` (plain-language: why we looked, what we found, what it means for the parent, what is open; on any node with real work), `## Outcome` (three lines: Done / Proof / Not verified). Numbers in the body must have a file in `before:`/`after:`.
 
 ## 6. Invariants (enforced by `validate.py`)
@@ -135,18 +152,23 @@ Errors (exit 1):
 - exactly one root (`parent: null`); every `parent` and `discovered_from` resolves; no cycles
 - `type` ∈ {problem, task}; `status` in the type's vocabulary; `title` non-empty
 - every `before[].artifact`, `after[].artifact`, `artifact` path exists on disk
+- every `members[]` entry is `{id: ...}` and the id resolves (an id or an alias); no member is listed twice,
+  and a sprint does not list itself
 - problem: `fix-proposed|fix-landed|verified` ⇒ `before` and `fix` non-empty;
   `verified` ⇒ `after` non-empty and `instrument` set; `verified|closed` ⇒ `closed` date;
   `resolution` only when status ∈ {fix-landed, verified, closed}; `hard` ⇒ `verified`;
   `soft` ⇒ `todo` non-empty
 - task: `done|dropped` ⇒ `closed` date; `done` ⇒ `after` non-empty unless `closed` < 2026-09-24
   (`STANDARD_SINCE` in validate.py; older tasks predate the evidence standard)
+- observation: `before` non-empty; `promoted|dismissed` ⇒ `closed` date; `promoted` ⇒ `promoted_to` resolves
 
 Warnings:
 - a leaf `problem` with empty `before` (a candidate, not a row)
 - `verified` without `resolution`; `todo` set but resolution not `soft`
 - a `verified` node with an unresolved descendant
 - `assignee` outside justin | agent | pi:<session> | claude:<session>
+- a sprint without exactly one `sprint-*` tag; a member without its sprint's tag; a `sprint-*` tag on a
+  node its sprint does not list; a member priority outside P1 | P2 | P3
 - a checkbox or `#task` line in any note beside `problems/` (the tree is the only task list)
 
 Rollup (computed, never stored) over descendants: `open` = *leaf* problems in
@@ -158,7 +180,7 @@ always show their label in the tree and the cockpit; leaves show nothing.
 
 ## 7. IDs and aliases
 
-`<prefix>-<4 base36 chars of sha256(title + timestamp)>`, prefix per project (`cbe`),
+`<prefix>-<4 base36 chars of sha256(title + timestamp)>`, prefix per project (`xyz`),
 root id fixed as `<prefix>-root`. Minted by `new.py`, collision-checked against ids and
 aliases. Existing `P-01…P-14` are migrated to hash ids with `aliases: [P-nn]` so current
 `[[P-nn]]` wikilinks and old session mentions still resolve.
@@ -180,10 +202,10 @@ override for a session that should be attached but never typed the id.
 
 ## 9. Tooling (step 1, delivered)
 
-`~/brain/.claude/tools/problem-tree/`
+`the tool's directory (`problem_tree/`)`
 - `validate.py DIR [--tree]` — invariants of §6, tree print with rollup. PyYAML required.
 - `new.py DIR problem|task --parent ID --title "…" [--alias P-nn] [--discovered-from ID]`
-  and `new.py DIR problem --root --prefix cbe --title "…"` — mints an id, writes the file
+  and `new.py DIR problem --root --prefix xyz --title "…"` — mints an id, writes the file
   from a template, prints the path.
 - `templates/problem.md`, `templates/task.md`.
 
@@ -203,25 +225,9 @@ as URLs, rendered body, children, `discovered_from` backlink; (3) sessions strip
 
 ## 11. Agent rules
 
-Not kept here: how agents work the tree is `~/song_workspace/AGENTS.md` › *The problem board*; a
-problem's lifecycle (admission, promotion, routine) is `connectome_body_eval/Problem Ledger.md`. The
+Not kept here: how agents work the tree is `the project's `AGENTS.md`` › *The problem board*; a
+problem's lifecycle (admission, promotion, routine) is `my_repo/Problem Ledger.md`. The
 invariants those rules rely on are §6.
-
-## 12. Migration (step 2, pending permission — moves and renames)
-
-1. Create `02-Projects/connectome_simulation/connectome_body_eval/problems/` with `cbe-root` and one problem per
-   aspect (`connectome_body_eval` today).
-2. For each `connectome_body_eval/problems/P-nn.md`: mint id, move, add `aliases: [P-nn]`,
-   `parent`, `resolution`, structured `before`/`after`/`fix` from the existing prose and
-   `media/problems/P-nn/` files; rewrite `![[…]]` to relative paths. Move
-   `connectome_body_eval/media/problems/` → `media/problems/` (gitignored both sides).
-3. Point `Problem Ledger.md` index at the new ids; leave its rules text; its Dataview
-   table gets a `FROM` update.
-4. Vault `.gitignore`: add `02-Projects/connectome_simulation/media` (the current pattern
-   `**/media` already matches; confirm). Vault `CLAUDE.md` folder contract: one row for
-   `problems/` and `.claude/tools/`.
-5. Run `validate.py --tree`; review the tree that falls out against how the work is
-   actually thought about before building the cockpit.
 
 ## 13. Open items
 
@@ -254,8 +260,8 @@ are the union of the note's `nodes:` and what the tree's `before/after` entries 
 Cockpit: **runs** table (sortable) → run page: lineage strip, the four sections, linked tree
 nodes, arms table (run id, job, commits per library with dirty marker, bundle, stage-note
 links), config diff vs a chosen `previous` and arm, figure gallery (filter by arm / stage /
-verdict / card name; **compare arms** = one row per card, one column per arm at a chosen
-stage; copy image / `![[vault path]]` / path), sessions. Node pages get a **runs** box.
+verdict / card name; with several arms, one row per plot (stage, card) and one column per arm by
+default (2026-10-03, xyz-obiw), a checkpoint step in a file name folded into the plot's row; copy image / `![[vault path]]` / path), sessions. Node pages get a **runs** box.
 
 Rejected (user, 2026-09-21): *promote to evidence* from the UI — too much mechanism;
 evidence attachment stays with the agent/editor. Deferred: a `lineage` graph view; orphan
@@ -266,7 +272,7 @@ figure folders (`media/dn_rhythmicity*`, `rigging_2026-09-11`) with no experimen
 Run galleries are ordered by five questions, encoded in the cockpit's `config.yaml › figure_tiers`
 (not in code): **1 training** — did the run learn? (`training/*`, `training_curves*`) ·
 **2 rigging** — are inputs and outputs wired through? (`R.*`, `health_stimulus`, `health_motor_path`,
-`rigging_*`) · **3 biophysics & health** — is the connectome in a physiological regime?
+`rigging_*`) · **3 biophysics & health** — is the model in a physiological regime?
 (`activity/*` and `*_activity` first, then `E.*`, `health_voltage*`, `health_episode*`) ·
 **4 sensory organs** — do the sensors behave like the literature? (`G.*`, `J.*`, `N.*`, `T.*`) ·
 **5 circuit & behaviour** — does the circuit do what the papers say? (`D.*`, `H.*`, `I.*`, clamp
@@ -276,10 +282,17 @@ aggregate precedes its `*_examples/` instances, which are folded by default. Top
 subfolders there are arms. Per-run figures no pattern claims are shown under "other" — acceptable for
 one-off experiments; a recurring family gets a pattern, never a server-side guess.
 
+**Revised 2026-09-29 (user):** training > rigging > biophysics > ensemble > meta > video > perturbation >
+recordings, the protocol order of `my_repo`'s packages. A card id's prefix names its question,
+so circuit and behaviour cards cannot be placed by pattern (`circuit.*` comes from ensemble, perturbation and
+recordings); tiers with `index: <protocol>` take the cards `card_index.yaml` assigns to that protocol. The
+index is generated from the project's source by `index_cards.py` (a card goes to the one package whose code names
+it; old letter ids follow their alias) and is checked before patterns. Re-run it when cards change.
+
 ## 17. Runs as a control surface (2026-09-22)
 
 The run page launches the two tools a run is read with: **TensorBoard** over the experiment's `runs/`
-and the **Observatory** (the connectome eval dashboard: `dashboard/launch_dashboard_from_checkpoints.sh`
+and the **Observatory** (the project's eval dashboard: `dashboard/launch_dashboard_from_checkpoints.sh`
 build = LSF GPU job over the sweep with a spec, serve = a web server over the bundle). Services run
 where the cluster filesystem is native — locally when the cockpit is on the cluster, via
 `ssh services.ssh_host` plus an automatic `ssh -L` forward when on the Mac — on ports from
@@ -316,3 +329,20 @@ resolution. Clicking a tasks-closed bar opens a sidebar listing the nodes closed
 last, dimmed; `#/storyline/closed/<from>[..<to>]`); once a day is narrower than 6 px the bars merge into
 Monday-start weeks and a click lists the week. `answers:` links show as text and a dashed ring on the linked dot, not as arcs. Node
 pages carry a ◆ marker per story point that draws on them.
+
+## 19. Sprints (2026-10-02)
+
+A sprint gathers nodes from different parts of the tree for one deadline, so that one parent session can run
+them without moving them. A sprint is an ordinary node, usually a `task`, that carries `members:`, a list of
+`{id, priority, owner}` in rank order. `id` is an id or an alias. `priority` is P1, P2 or P3. `owner` is free text
+(a person, or `agent`). Members keep their `parent`. The tree's rollups ignore `members:`, so nothing is counted
+twice. Tasks that exist only for the sprint (slides, a dry run) are its children.
+
+The sprint carries one `sprint-<slug>` tag, and every member carries the same tag, so Obsidian's tag search finds
+the sprint's nodes. `members:` stays the source of truth for rank, priority and owner. `validate.py` warns when the
+tag and the list disagree. The sprint's parent session is attached the same way as any node's (§8), and it writes
+briefs whose `parent_node` is the sprint.
+
+Cockpit: a sprint's page lists its members in rank order (status dot, priority, id, title, owner; the node a
+member lives under appears on hover), above its children. Each member's page carries a ⚑ pill per sprint that
+lists it.

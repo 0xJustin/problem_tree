@@ -26,7 +26,7 @@ UNRESOLVED = {"open", "fix-proposed", "fix-landed"}
 PAST_OPEN = {"fix-proposed", "fix-landed", "verified"}
 # Tasks closed before this date predate the evidence standard and are not held to it.
 STANDARD_SINCE = "2026-09-24"
-ASSIGNEE = re.compile(r"justin|agent|(pi|claude):\S+")
+ASSIGNEE = re.compile(r"justin|gwen|both|agent|(pi|claude):\S+")
 PRIORITY = ("P1", "P2", "P3")
 CHECKBOX = re.compile(r"^\s*[-*] \[[ xX~]\]|#task\b")
 
@@ -127,7 +127,7 @@ def check(nodes):
             E.append((i, "done needs after evidence (commit, test, job or artifact)"))
         who = n.get("assignee")
         if who is not None and not ASSIGNEE.fullmatch(str(who)):
-            W.append((i, f"assignee {who!r} not justin|agent|pi:<session>|claude:<session>"))
+            W.append((i, f"assignee {who!r} not justin|gwen|both|agent|pi:<session>|claude:<session>"))
     _check_members(nodes, byid, aliases, E, W)
     _check_rollup(byid, children, W)
     return E, W

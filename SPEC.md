@@ -124,7 +124,7 @@ todo: ""                           # required when resolution: soft
 
 ```yaml
 status: open | done | dropped
-assignee: null                     # justin | agent | pi:<session> | claude:<session> (all node types)
+assignee: null                     # justin | gwen | both | agent | pi:<session> | claude:<session> (all node types)
 before: []                         # optional: why the task is worth doing; same entry shape as a problem's
 after: []                          # required for done (from 2026-09-24): commit, test, job or artifact
 artifact: null                     # legacy single relative path; counts as after-evidence in the cockpit
@@ -166,7 +166,7 @@ Warnings:
 - a leaf `problem` with empty `before` (a candidate, not a row)
 - `verified` without `resolution`; `todo` set but resolution not `soft`
 - a `verified` node with an unresolved descendant
-- `assignee` outside justin | agent | pi:<session> | claude:<session>
+- `assignee` outside justin | gwen | both | agent | pi:<session> | claude:<session>
 - a sprint without exactly one `sprint-*` tag; a member without its sprint's tag; a `sprint-*` tag on a
   node its sprint does not list; a member priority outside P1 | P2 | P3
 - a checkbox or `#task` line in any note beside `problems/` (the tree is the only task list)

@@ -53,7 +53,7 @@ def main():
     ap.add_argument("--parent")
     ap.add_argument("--alias", action="append", default=[])
     ap.add_argument("--discovered-from")
-    ap.add_argument("--assignee", help="justin | agent | pi:<session> | claude:<session>")
+    ap.add_argument("--assignee", help="justin | gwen | both | agent | pi:<session> | claude:<session>")
     ap.add_argument("--root", action="store_true", help="create the root node (parent: null)")
     ap.add_argument("--prefix", help="project prefix, e.g. xyz; read from the root otherwise")
     args = ap.parse_args()
